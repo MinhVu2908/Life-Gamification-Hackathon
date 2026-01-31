@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Zap, Heart, Compass, Trophy, ChevronRight, LayoutDashboard, Map as MapIcon, Target } from 'lucide-react';
+import { ChevronRight, Home, MapPin, Lock, Camera, Send, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Research Data ---
@@ -86,6 +86,15 @@ export default function App() {
     setStep('results');
   };
 
+  const resetProfile = () => {
+    setStep('onboarding');
+    setCurrentQ(0);
+    setAnswers({});
+    setResults(null);
+    localStorage.removeItem('sh_step');
+    localStorage.removeItem('sh_results');
+  };
+
   return (
     <div className="min-h-screen bg-salar-dark text-slate-200 font-sans selection:bg-amber-500/30 overflow-x-hidden">
       <AnimatePresence mode="wait">
@@ -144,32 +153,95 @@ export default function App() {
         )}
 
         {step === 'dashboard' && results && (
-          <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 max-w-5xl mx-auto">
-            <header className="flex justify-between items-center mb-12">
-               <h2 className="font-serif text-2xl text-amber-500 tracking-tighter uppercase">Sovereign Realm</h2>
-               <div className="text-right">
-                  <div className="text-xs uppercase text-slate-500">Level {results.level}</div>
-                  <div className="font-serif text-xl">{results.archetype.name}</div>
-               </div>
-            </header>
-            
-            {/* The Habit Engine Placeholder */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-               <div className="md:col-span-2 space-y-6">
-                  <div className="p-8 bg-white/5 rounded-3xl border border-white/10 border-dashed flex flex-col items-center justify-center text-slate-500">
-                    <p className="font-serif italic mb-4">No active Micro-Quests detected.</p>
-                    <button className="px-6 py-2 border border-slate-700 hover:border-amber-500 hover:text-amber-500 transition-colors rounded-full text-xs font-bold uppercase tracking-widest">
-                      Perform Architect's Scan
-                    </button>
+          <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col pb-20">
+            <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full relative">
+              <button
+                onClick={resetProfile}
+                className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                title="Reset profile"
+              >
+                <RotateCcw size={18} />
+              </button>
+              {/* Top row: Profile (left) + Welcome prompt (right) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {/* Profile - top left */}
+                <div className="p-4 bg-salar-card rounded-2xl border border-white/5 flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                    <span className="text-amber-500 font-serif text-xl">S</span>
                   </div>
-               </div>
-               <div className="space-y-6">
-                  <div className="p-6 bg-salar-card rounded-2xl border border-white/5">
-                    <h4 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 flex items-center gap-2"><Trophy size={14}/> Primary Need</h4>
-                    <div className="text-amber-400 font-serif text-lg">{results.primaryNeed === 'V' ? 'Vitality' : results.primaryNeed === 'R' ? 'Resilience' : results.primaryNeed === 'C' ? 'Connection' : 'Mastery'}</div>
+                  <div className="min-w-0">
+                    <div className="font-serif text-amber-500 uppercase tracking-wider text-sm">{results.archetype.name}</div>
+                    <div className="text-xs text-slate-500 mt-0.5">Level {results.level}</div>
+                    <div className="text-xs text-slate-400 mt-0.5">Exp: {results.xp}</div>
+                    <div className="text-xs text-slate-400">V:{results.scores.V} R:{results.scores.R} C:{results.scores.C} M:{results.scores.M}</div>
                   </div>
-               </div>
+                </div>
+
+                {/* Welcome prompt - top right */}
+                <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Welcome</div>
+                  <p className="font-serif italic text-slate-300 text-sm">"{results.archetype.desc}"</p>
+                </div>
+              </div>
+
+              {/* Middle: Left column (AI prompt + Scan) | Right column (Dashboard) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left column */}
+                <div className="space-y-4">
+                  {/* AI prompt */}
+                  <div className="p-3 bg-salar-card rounded-xl border border-white/5">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Write prompt..."
+                        className="flex-1 bg-transparent border-none outline-none text-slate-300 placeholder:text-slate-600 text-sm"
+                        readOnly
+                      />
+                      <button className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" disabled>
+                        <Send size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scan camera */}
+                  <div className="aspect-[4/3] bg-salar-card rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500">
+                    <Camera size={40} className="mb-2 opacity-50" />
+                    <span className="text-sm">Capture Picture</span>
+                  </div>
+                </div>
+
+                {/* Right column - Dashboard with task cards */}
+                <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
+                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Dashboard</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="p-3 bg-white/5 rounded-xl border border-white/5 min-h-[80px]">
+                        <span className="text-xs text-slate-500">Task {i}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
+
+            {/* Bottom nav bar */}
+            <nav className="fixed bottom-0 left-0 right-0 h-16 bg-salar-card border-t border-white/5 flex items-center justify-around px-4">
+              <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
+                <Lock size={22} />
+              </button>
+              <button className="p-2 rounded-lg text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10 transition-colors" title="Maps">
+                <MapPin size={24} />
+              </button>
+              <button className="p-3 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30" title="Home">
+                <Home size={24} />
+              </button>
+              <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
+                <Lock size={22} />
+              </button>
+              <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
+                <Lock size={22} />
+              </button>
+            </nav>
           </motion.div>
         )}
 
