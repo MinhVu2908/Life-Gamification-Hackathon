@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;700&display=swap');
+
+@theme {
+  /* Define your Research-Backed Colors */
+  --color-salar-dark: #0B0C15;
+  --color-salar-card: #161827;
+  
+  /* Define your Narrative Fonts */
+  --font-serif: "EB Garamond", serif;
+  --font-sans: "Inter", sans-serif;
+}
+
+/* Apply the background to the whole kingdom */
+body {
+  background-color: var(--color-salar-dark);
+  color: #e2e8f0; /* slate-200 */
+  font-family: var(--font-sans);
+}
