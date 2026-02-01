@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Home, MapPin, Lock, Camera, Send, RotateCcw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- Research Data ---
@@ -47,6 +47,8 @@ export default function App() {
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
   const [results, setResults] = useState(() => JSON.parse(localStorage.getItem('sh_results')) || null);
+  const [mapView, setMapView] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState(null);
 
   // Persistence Hook
   useEffect(() => {
@@ -157,11 +159,72 @@ export default function App() {
             <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full relative">
               <button
                 onClick={resetProfile}
-                className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-colors z-10"
                 title="Reset profile"
               >
                 <RotateCcw size={18} />
               </button>
+
+              {/* Maps view: 4 attribute locations + quest circles */}
+              {mapView ? (
+                <div className="min-h-[60vh]">
+                  {selectedLocation ? (
+                    <>
+                      <button
+                        onClick={() => setSelectedLocation(null)}
+                        className="flex items-center gap-2 text-slate-500 hover:text-amber-500 text-sm mb-4"
+                      >
+                        <ChevronLeft size={18} /> Back
+                      </button>
+                      <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
+                        {selectedLocation === 'V' ? 'Vitality' : selectedLocation === 'R' ? 'Resilience' : selectedLocation === 'C' ? 'Connection' : 'Mastery'} — Quests
+                      </div>
+                      <div className="flex flex-wrap gap-3 p-4">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                          <div
+                            key={i}
+                            className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex-shrink-0"
+                            aria-label={`Quest ${i}`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="relative w-full aspect-[4/3] max-w-xl mx-auto bg-salar-card rounded-2xl border border-white/5 overflow-hidden">
+                      {/* 4 attribute location circles at different spots */}
+                      <button
+                        onClick={() => setSelectedLocation('V')}
+                        className="absolute top-[12%] left-[18%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
+                        title="Vitality"
+                      >
+                        V
+                      </button>
+                      <button
+                        onClick={() => setSelectedLocation('R')}
+                        className="absolute top-[15%] right-[22%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
+                        title="Resilience"
+                      >
+                        R
+                      </button>
+                      <button
+                        onClick={() => setSelectedLocation('C')}
+                        className="absolute bottom-[18%] left-[25%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
+                        title="Connection"
+                      >
+                        C
+                      </button>
+                      <button
+                        onClick={() => setSelectedLocation('M')}
+                        className="absolute bottom-[12%] right-[20%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
+                        title="Mastery"
+                      >
+                        M
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
               {/* Top row: Profile (left) + Welcome prompt (right) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 {/* Profile - top left */}
@@ -184,44 +247,31 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Middle: Left column (AI prompt + Scan) | Right column (Dashboard) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left column */}
-                <div className="space-y-4">
-                  {/* AI prompt */}
-                  <div className="p-3 bg-salar-card rounded-xl border border-white/5">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Write prompt..."
-                        className="flex-1 bg-transparent border-none outline-none text-slate-300 placeholder:text-slate-600 text-sm"
-                        readOnly
-                      />
-                      <button className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" disabled>
-                        <Send size={18} />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Scan camera */}
-                  <div className="aspect-[4/3] bg-salar-card rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500">
-                    <Camera size={40} className="mb-2 opacity-50" />
-                    <span className="text-sm">Capture Picture</span>
+              {/* Middle: AI prompt + Scan camera */}
+              <div className="space-y-4">
+                {/* AI prompt */}
+                <div className="p-3 bg-salar-card rounded-xl border border-white/5">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Write prompt..."
+                      className="flex-1 bg-transparent border-none outline-none text-slate-300 placeholder:text-slate-600 text-sm"
+                      readOnly
+                    />
+                    <button className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" disabled>
+                      <Send size={18} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Right column - Dashboard with task cards */}
-                <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
-                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Dashboard</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div key={i} className="p-3 bg-white/5 rounded-xl border border-white/5 min-h-[80px]">
-                        <span className="text-xs text-slate-500">Task {i}</span>
-                      </div>
-                    ))}
-                  </div>
+                {/* Scan camera */}
+                <div className="aspect-[4/3] max-w-md bg-salar-card rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500">
+                  <Camera size={40} className="mb-2 opacity-50" />
+                  <span className="text-sm">Capture Picture</span>
                 </div>
               </div>
+                </>
+              )}
             </div>
 
             {/* Bottom nav bar */}
@@ -229,10 +279,18 @@ export default function App() {
               <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
                 <Lock size={22} />
               </button>
-              <button className="p-2 rounded-lg text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10 transition-colors" title="Maps">
+              <button
+                onClick={() => { setMapView(true); setSelectedLocation(null); }}
+                className={`p-2 rounded-lg transition-colors ${mapView ? 'text-amber-500 bg-amber-500/10' : 'text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10'}`}
+                title="Maps"
+              >
                 <MapPin size={24} />
               </button>
-              <button className="p-3 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/30" title="Home">
+              <button
+                onClick={() => { setMapView(false); setSelectedLocation(null); }}
+                className={`p-3 rounded-full transition-colors ${!mapView ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'text-slate-400 hover:text-amber-500 hover:bg-white/5 border border-white/5'}`}
+                title="Home"
+              >
                 <Home size={24} />
               </button>
               <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
