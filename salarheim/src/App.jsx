@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Send, RefreshCw, Coins, Zap, Check, CheckCircle2, User, Edit2, LogOut, Save, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
-import { getTasksForBoard, getTaskRewards } from './easyTasks';
+import { getTasksForBoard, getTaskRewards, EASY_TASKS } from './easyTasks';
 import { getAttrLevel, ATTR_MAX } from './engine';
 
 // --- Research Data --- (4 questions per attribute, 16 total)
@@ -290,18 +290,23 @@ export default function App() {
     setTempDescription('');
   };
 
-  const handleTaskComplete = (task) => {
+  const handleTaskComplete = (task, isQuickTask = false) => {
     if (!results) return;
     
-    // Find the task index to determine which enemy to attack
+    // Check if task is already completed
+    if (completedTaskIds.includes(task.id)) return;
+    
+    // Find the task index to determine which enemy to attack (only for main board tasks)
     const taskIndex = boardTasks.findIndex(t => t.id === task.id);
-    if (taskIndex === -1) return;
+    const isMainBoardTask = taskIndex !== -1;
     
-    // Trigger attack animation
-    setAttackingEnemy(taskIndex);
+    // Only trigger attack animation for main board tasks
+    if (isMainBoardTask && !isQuickTask) {
+      setAttackingEnemy(taskIndex);
+    }
     
-    // After animation completes, update state
-    setTimeout(() => {
+    // Function to update rewards and state
+    const updateTaskCompletion = () => {
       const { xp, coins } = getTaskRewards(task);
       const attrBonus = task.attrXP ?? {};
       setResults((prev) => {
@@ -322,9 +327,20 @@ export default function App() {
         };
       });
       setCompletedTaskIds((prev) => [...prev, task.id]);
-      setDefeatedEnemies((prev) => [...prev, taskIndex]);
-      setAttackingEnemy(null);
-    }, 1500); // Animation duration
+      if (isMainBoardTask && !isQuickTask) {
+        setDefeatedEnemies((prev) => [...prev, taskIndex]);
+      }
+      if (isMainBoardTask && !isQuickTask) {
+        setAttackingEnemy(null);
+      }
+    };
+    
+    // For main board tasks, wait for animation. For quick tasks, complete immediately
+    if (isMainBoardTask && !isQuickTask) {
+      setTimeout(updateTaskCompletion, 1500); // Animation duration
+    } else {
+      updateTaskCompletion();
+    }
   };
 
   const handleQuestClick = (quest) => {
@@ -407,7 +423,7 @@ export default function App() {
           <motion.div key="on" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
             <p className="font-serif text-sm text-amber-500/80 uppercase tracking-[0.3em] mb-4">Welcome</p>
-            <h1 className="font-serif text-6xl text-amber-500 tracking-[0.2em] uppercase mb-6">Sálarheim</h1>
+            <h1 className="font-serif text-6xl text-amber-500 tracking-[0.2em] uppercase mb-6">Sálarheim Citizen</h1>
             <p className="font-serif italic text-xl text-slate-500 mb-4">"The Edict of the Fallen King"</p>
             <div className="max-w-xl text-slate-400 text-left space-y-4 mb-12">
               <p className="font-serif italic">In the ruins of a fallen kingdom, four pillars once held the realm: Vitality, Resilience, Connection, and Mastery. Shadow Blight consumed them—but the Edict remains.</p>
@@ -592,7 +608,7 @@ export default function App() {
                         ) : (
                           <div className="flex items-center gap-2 justify-center mb-1">
                             <h2 className="font-serif text-2xl font-bold text-slate-100">
-                              {userName || 'Sálarheim'}
+                              {userName || 'TestUser'}
                             </h2>
                             <button
                               onClick={handleEditName}
@@ -864,7 +880,7 @@ export default function App() {
                         </div>
                       </div>
                       <button className="w-full py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs mb-2 hover:bg-amber-500/30 transition-colors" style={{ imageRendering: 'pixelated' }}>
-                        CLICK ME
+                        CUSTOMIZE
                       </button>
                       <div className="w-full py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs" style={{ imageRendering: 'pixelated' }}>
                         {results.archetype.name.toUpperCase()}
@@ -937,6 +953,95 @@ export default function App() {
                   <p className="text-slate-200 italic text-sm">"{results.archetype.desc}"</p>
                 </div>
 
+                {/* Generate Tasks and Quick Tasks Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Generate Tasks Section */}
+                  <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
+                    <div className="bg-green-600/40 border-2 border-green-900/50 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
+                      <h3 className="text-sm font-bold text-white uppercase">Generate Tasks</h3>
+                    </div>
+                    <div className="p-4 bg-salar-card border-2 border-amber-900/40 flex flex-col items-center justify-center min-h-[120px]" style={{ imageRendering: 'pixelated' }}>
+                      <div className="text-center">
+                        <Zap size={32} className="text-amber-500/50 mx-auto mb-2" />
+                        <p className="text-sm text-slate-400 mb-3">Task generation coming soon</p>
+                        <button 
+                          className="px-6 py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs hover:bg-amber-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ imageRendering: 'pixelated' }}
+                          disabled
+                        >
+                          GENERATE
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Tasks Dashboard */}
+                  <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
+                    <div className="bg-orange-600/40 border-2 border-orange-900/50 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
+                      <h3 className="text-sm font-bold text-white uppercase">Quick Tasks</h3>
+                    </div>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {(() => {
+                        // Get all available quick micro tasks that aren't in the main board and aren't completed
+                        const quickTasks = EASY_TASKS
+                          .filter(task => !fixedBoardTasks.some(bt => bt.id === task.id))
+                          .filter(task => !completedTaskIds.includes(task.id));
+                        
+                        return quickTasks.length > 0 ? (
+                          quickTasks.map((task) => {
+                            const { xp, coins } = getTaskRewards(task);
+                            const isCompleted = completedTaskIds.includes(task.id);
+                            const attrIcons = {
+                              'V': <Zap size={12} className="text-yellow-500" />,
+                              'R': <Sparkles size={12} className="text-pink-500" />,
+                              'C': <User size={12} className="text-blue-500" />,
+                              'M': <Zap size={12} className="text-green-500" />
+                            };
+                            const taskAttr = Object.keys(task.attrXP || {})[0];
+                            return (
+                              <div
+                                key={task.id}
+                                className={`bg-salar-card border-2 p-2 flex items-center justify-between transition-colors ${
+                                  isCompleted 
+                                    ? 'border-gray-600/40 opacity-50' 
+                                    : 'border-amber-900/40 hover:bg-amber-500/10'
+                                }`}
+                                style={{ imageRendering: 'pixelated' }}
+                              >
+                                <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                  {taskAttr && attrIcons[taskAttr]}
+                                  <span className={`text-xs truncate ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                    {task.text}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className={`text-[10px] font-bold ${isCompleted ? 'text-gray-500' : 'text-amber-500'}`}>
+                                    {isCompleted ? '✓' : `+${xp}`}
+                                  </span>
+                                  {!isCompleted && (
+                                    <button
+                                      onClick={() => handleTaskComplete(task, true)}
+                                      className="w-5 h-5 border-2 border-amber-500/50 bg-amber-500/10 flex items-center justify-center hover:bg-amber-500/30 transition-colors"
+                                      title={`Complete: +${xp} XP, +${coins} coins`}
+                                      style={{ imageRendering: 'pixelated' }}
+                                    >
+                                      <Check size={10} className="text-amber-500" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="p-3 bg-salar-card border-2 border-amber-900/40 text-center" style={{ imageRendering: 'pixelated' }}>
+                            <p className="text-xs text-slate-500">No quick tasks available</p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Game Screen - Battle Area */}
                 <div className="p-4 bg-green-600/20 border-4 border-green-900/40 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px' }}>
                   <div className="relative w-full h-full" style={{ minHeight: '250px' }}>
@@ -949,7 +1054,7 @@ export default function App() {
                       
                       return (
                         <motion.div
-                          className="absolute w-12 h-12 rounded-full bg-blue-500 border-4 border-blue-900 flex items-center justify-center z-20"
+                          className="absolute w-12 h-12 rounded-full bg-blue-500 border-4 border-blue-900 flex items-center justify-center z-0"
                           style={{ 
                             imageRendering: 'pixelated'
                           }}
@@ -996,7 +1101,7 @@ export default function App() {
                       return (
                         <motion.div
                           key={task.id}
-                          className="absolute w-10 h-10 rounded-full border-4 border-red-900 bg-red-500 flex items-center justify-center z-10"
+                          className="absolute w-10 h-10 rounded-full border-4 border-red-900 bg-red-500 flex items-center justify-center z-0"
                           style={{
                             left: `${enemyPos.x}%`,
                             top: `${enemyPos.y}%`,
@@ -1085,7 +1190,7 @@ export default function App() {
             </div>
 
             {/* Bottom nav bar */}
-            <nav className="fixed bottom-0 left-0 right-0 h-16 bg-salar-card border-t border-white/5 flex items-center justify-around px-4">
+            <nav className="fixed bottom-0 left-0 right-0 h-16 bg-salar-card border-t border-white/5 flex items-center justify-around px-4 z-50">
               <button
                 onClick={() => { setProfileView(true); setMapView(false); setSelectedLocation(null); }}
                 className={`p-2 rounded-lg transition-colors ${profileView ? 'text-amber-500 bg-amber-500/10' : 'text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10'}`}
