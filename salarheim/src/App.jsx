@@ -424,63 +424,128 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-salar-dark text-slate-200 font-sans selection:bg-amber-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-blue-100 text-slate-800 font-sans selection:bg-amber-500/30 overflow-x-hidden" style={{ imageRendering: 'pixelated' }}>
       <AnimatePresence mode="wait">
         
         {/* 1. Welcome / Story */}
         {step === 'onboarding' && (
           <motion.div key="on" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-            <p className="font-serif text-sm text-amber-500/80 uppercase tracking-[0.3em] mb-4">Welcome</p>
-            <h1 className="font-serif text-6xl text-amber-500 tracking-[0.2em] uppercase mb-6">Sálarheim Citizen</h1>
-            <p className="font-serif italic text-xl text-slate-500 mb-4">"The Edict of the Fallen King"</p>
-            <div className="max-w-xl text-slate-400 text-left space-y-4 mb-12">
-              <p className="font-serif italic">In the ruins of a fallen kingdom, four pillars once held the realm: Vitality, Resilience, Connection, and Mastery. Shadow Blight consumed them—but the Edict remains.</p>
-              <p className="font-serif italic">Your trial begins now. Touch each pillar to reveal your current state. The ancients will speak; you will answer.</p>
+            className="min-h-screen flex flex-col items-center justify-center p-6 relative" style={{ background: 'linear-gradient(to bottom, #87CEEB 0%, #87CEEB 66%, #228B22 66%, #228B22 100%)' }}>
+            {/* Hexagonal clouds */}
+            <div className="absolute top-10 left-10 w-16 h-16 bg-white/80" style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)', imageRendering: 'pixelated' }}></div>
+            <div className="absolute top-20 right-20 w-12 h-12 bg-white/80" style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)', imageRendering: 'pixelated' }}></div>
+            <div className="absolute top-16 right-32 w-14 h-14 bg-white/80" style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)', imageRendering: 'pixelated' }}></div>
+            
+            {/* Main Dialogue Box */}
+            <div className="w-full max-w-2xl bg-amber-50 border-4 border-amber-900 p-6 relative z-10" style={{ imageRendering: 'pixelated' }}>
+              {/* Banner */}
+              <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-4 text-center" style={{ imageRendering: 'pixelated' }}>
+                <h2 className="text-white font-mono text-xs font-bold uppercase">THE ORACLE'S REALM</h2>
+              </div>
+              
+              {/* Title */}
+              <h1 className="font-mono text-2xl font-bold text-black mb-4 text-center uppercase">Welcome, Traveler</h1>
+              
+              {/* Text Content */}
+              <div className="space-y-3 text-left mb-6">
+                <p className="font-mono text-xs text-black leading-relaxed">
+                  You stand before the ancient Oracle, a mystical entity that has guided countless souls on their journey of self-discovery. The air shimmers with ethereal energy as the Oracle's voice echoes in your mind...
+                </p>
+                <p className="font-mono text-xs text-black leading-relaxed">
+                  "Four pillars hold the foundation of every being: <span className="text-red-600 font-bold">PHYSICAL</span> strength, <span className="text-red-600 font-bold">MENTAL</span> fortitude, <span className="text-red-600 font-bold">SOCIAL</span> grace, and <span className="text-red-600 font-bold">INTELLIGENT</span> wisdom."
+                </p>
+                <p className="font-mono text-xs text-black leading-relaxed">
+                  "Each path holds questions that will reveal your true nature. Answer honestly, for the Oracle sees all truths. Your journey begins with a choice..."
+                </p>
+                <p className="font-mono text-sm text-blue-600 font-bold text-center mt-4">
+                  Which aspect of yourself will you explore first?
+                </p>
+              </div>
+              
+              {/* Button */}
+              <div className="flex justify-center">
+                <button 
+                  onClick={() => setStep('trial-attributes')} 
+                  className="px-8 py-3 bg-green-500 border-4 border-green-700 text-white font-mono text-xs font-bold uppercase hover:bg-green-600"
+                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #1a5a1a' }}
+                >
+                  BEGIN JOURNEY
+                </button>
+              </div>
             </div>
-            <button onClick={() => setStep('trial-attributes')} className="px-12 py-4 border border-amber-600/50 text-amber-500 font-serif tracking-widest hover:bg-amber-600/10 transition-all">
-              BEGIN THE TRIAL
-            </button>
           </motion.div>
         )}
 
-        {/* 2. Four attribute circles */}
+        {/* 2. Four attribute panels */}
         {step === 'trial-attributes' && (
           <motion.div key="attr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center p-6 relative">
-            <button onClick={() => setStep('onboarding')} className="absolute top-6 left-6 text-slate-500 hover:text-amber-500 flex items-center gap-2 text-sm z-10">
-              <ChevronLeft size={18} /> Back to story
+            className="min-h-screen flex flex-col items-center justify-center p-6 relative" style={{ background: 'linear-gradient(to bottom, #87CEEB 0%, #87CEEB 66%, #228B22 66%, #228B22 100%)' }}>
+            {/* Hexagonal clouds */}
+            <div className="absolute top-10 left-10 w-16 h-16 bg-white/80" style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)', imageRendering: 'pixelated' }}></div>
+            <div className="absolute top-20 right-20 w-12 h-12 bg-white/80" style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)', imageRendering: 'pixelated' }}></div>
+            
+            {/* Back button */}
+            <button 
+              onClick={() => setStep('onboarding')} 
+              className="absolute top-6 left-6 bg-amber-50 border-2 border-amber-900 text-amber-900 font-mono text-xs px-3 py-1 hover:bg-amber-100 z-10"
+              style={{ imageRendering: 'pixelated', transition: 'none' }}
+            >
+              ← BACK
             </button>
-            <p className="font-serif text-sm text-slate-500 uppercase tracking-widest mb-8">Choose a pillar to assess</p>
-            <div className="grid grid-cols-2 gap-8 max-w-md mb-12">
-              {['V', 'R', 'C', 'M'].map((attr) => {
+            
+            {/* Instruction Banner */}
+            <div className="w-full max-w-3xl bg-amber-50 border-4 border-amber-900 p-4 mb-8 text-center" style={{ imageRendering: 'pixelated' }}>
+              <h2 className="font-mono text-lg font-bold text-amber-900 mb-2 uppercase">Choose Your Path</h2>
+              <p className="font-mono text-xs text-amber-900">Select each circle to answer 5 questions</p>
+            </div>
+            
+            {/* Four Path Panels */}
+            <div className="grid grid-cols-4 gap-4 max-w-4xl mb-8">
+              {[
+                { attr: 'V', name: 'PHYSICAL', color: 'bg-red-500', icon: '💪' },
+                { attr: 'R', name: 'MENTAL', color: 'bg-sky-300', icon: '🧠' },
+                { attr: 'C', name: 'SOCIAL', color: 'bg-pink-500', icon: '👥' },
+                { attr: 'M', name: 'INTELLIGENT', color: 'bg-green-400', icon: '📚' }
+              ].map(({ attr, name, color, icon }) => {
                 const done = hasAttrAnswers(attr);
                 return (
-                  <button
-                    key={attr}
-                    onClick={() => {
-                      setTrialAttr(attr);
-                      setCurrentQ(0);
-                      setStep('trial-questions');
-                    }}
-                    className={`w-24 h-24 rounded-full flex flex-col items-center justify-center border-2 transition-all font-serif
-                      ${done ? 'border-amber-500/60 bg-amber-500/20 text-amber-500' : 'border-white/20 bg-white/5 text-slate-400 hover:border-amber-500/40 hover:bg-amber-500/10'}
-                    `}
-                    title={ATTR_NAMES[attr]}
-                  >
-                    <span className="text-2xl font-bold">{attr}</span>
-                    <span className="text-[10px] uppercase mt-0.5">{ATTR_NAMES[attr]}</span>
-                    {done && <Check size={14} className="mt-1 text-amber-500" />}
-                  </button>
+                  <div key={attr} className="flex flex-col items-center">
+                    <button
+                      onClick={() => {
+                        setTrialAttr(attr);
+                        setCurrentQ(0);
+                        setStep('trial-questions');
+                      }}
+                      className={`w-24 h-24 ${color} border-4 border-amber-900 flex items-center justify-center relative hover:opacity-90`}
+                      style={{ imageRendering: 'pixelated', transition: 'none' }}
+                    >
+                      <span className="text-4xl">{icon}</span>
+                      {done && (
+                        <div className="absolute top-0 right-0 w-6 h-6 bg-green-500 border-2 border-amber-900 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                          <Check size={12} className="text-white" />
+                        </div>
+                      )}
+                    </button>
+                    <div className="w-full mt-2 bg-amber-900 border-2 border-amber-950 p-2 text-center" style={{ imageRendering: 'pixelated' }}>
+                      <span className="text-white font-mono text-xs font-bold uppercase">{name}</span>
+                    </div>
+                  </div>
                 );
               })}
             </div>
+            
+            {/* View Results Button */}
             <button
               onClick={() => setStep('trial-confirm')}
               disabled={!allAttrsAnswered}
-              className={`px-8 py-3 border font-serif tracking-widest transition-all ${allAttrsAnswered ? 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10' : 'border-white/10 text-slate-600 cursor-not-allowed'}`}
+              className={`px-8 py-3 border-4 font-mono text-xs font-bold uppercase ${
+                allAttrsAnswered 
+                  ? 'bg-yellow-400 border-amber-900 text-amber-900 hover:bg-yellow-500' 
+                  : 'bg-gray-300 border-gray-500 text-gray-600 cursor-not-allowed'
+              }`}
+              style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: allAttrsAnswered ? '4px 4px 0px 0px #8B4513' : 'none' }}
             >
-              Confirm & Continue
+              VIEW RESULTS
             </button>
           </motion.div>
         )}
@@ -488,22 +553,65 @@ export default function App() {
         {/* 3. Four questions for selected attribute */}
         {step === 'trial-questions' && trialAttr && (
           <motion.div key="qs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center p-6 relative">
-            <button onClick={() => { setStep('trial-attributes'); setTrialAttr(null); setCurrentQ(0); }} className="absolute top-6 left-6 text-slate-500 hover:text-amber-500 flex items-center gap-2 text-sm z-10">
-              <ChevronLeft size={18} /> Back
+            className="min-h-screen flex flex-col items-center justify-center p-6 relative" style={{ background: 'linear-gradient(to bottom, #87CEEB 0%, #87CEEB 66%, #228B22 66%, #228B22 100%)' }}>
+            {/* Back button */}
+            <button 
+              onClick={() => { setStep('trial-attributes'); setTrialAttr(null); setCurrentQ(0); }} 
+              className="absolute top-6 left-6 bg-amber-50 border-2 border-amber-900 text-amber-900 font-mono text-xs px-3 py-1 hover:bg-amber-100 z-10"
+              style={{ imageRendering: 'pixelated', transition: 'none' }}
+            >
+              ← BACK
             </button>
-            <div className="w-full max-w-2xl space-y-12">
-              <div className="flex justify-between font-serif text-xs text-amber-500/50 uppercase tracking-widest">
-                <span>{ATTR_NAMES[trialAttr]} — Question {currentQ + 1}/4</span>
+            
+            {/* Main Quest Box */}
+            <div className="w-full max-w-2xl bg-amber-50 border-4 border-amber-900 p-6 relative" style={{ imageRendering: 'pixelated', boxShadow: '8px 8px 0px 0px #8B4513' }}>
+              {/* Title and Progress */}
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="font-mono text-sm font-bold text-amber-900 uppercase">
+                  {trialAttr === 'V' ? 'PHYSICAL' : trialAttr === 'R' ? 'MENTAL' : trialAttr === 'C' ? 'SOCIAL' : 'INTELLIGENT'} QUEST
+                </h2>
+                <span className="font-mono text-xs text-amber-900">{currentQ + 1}/4</span>
               </div>
-              <h2 className="font-serif text-3xl text-slate-200 leading-snug italic">"{getQuestionsByAttr(trialAttr)[currentQ].text}"</h2>
-              <div className="grid grid-cols-5 gap-4">
-                {[1, 2, 3, 4, 5].map((val) => (
-                  <button key={val} onClick={() => handleAnswer(val)}
-                    className="h-16 border border-white/5 bg-white/5 hover:border-amber-500/50 transition-all rounded-lg font-serif text-xl">
-                    {val}
-                  </button>
-                ))}
+              
+              {/* Progress Bar */}
+              <div className="w-full h-4 bg-amber-900 border-2 border-amber-950 mb-4" style={{ imageRendering: 'pixelated' }}>
+                <div 
+                  className="h-full bg-green-500"
+                  style={{ 
+                    width: `${((currentQ + 1) / 4) * 100}%`,
+                    imageRendering: 'pixelated'
+                  }}
+                ></div>
+              </div>
+              
+              {/* Question Box */}
+              <div className="bg-yellow-200 border-2 border-amber-900 p-4 mb-4" style={{ imageRendering: 'pixelated' }}>
+                <p className="font-mono text-xs text-amber-900 leading-relaxed">
+                  {getQuestionsByAttr(trialAttr)[currentQ].text}
+                </p>
+              </div>
+              
+              {/* Answer Options - 5 point scale */}
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((val) => {
+                  const labels = [
+                    "Strongly Disagree",
+                    "Disagree",
+                    "Neutral",
+                    "Agree",
+                    "Strongly Agree"
+                  ];
+                  return (
+                    <button
+                      key={val}
+                      onClick={() => handleAnswer(val)}
+                      className="w-full bg-blue-50 border-2 border-amber-900 p-3 text-left hover:bg-blue-100 font-mono text-xs text-amber-900"
+                      style={{ imageRendering: 'pixelated', transition: 'none' }}
+                    >
+                      {val}. {labels[val - 1]}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </motion.div>
@@ -512,44 +620,104 @@ export default function App() {
         {/* 4. Confirm step */}
         {step === 'trial-confirm' && (
           <motion.div key="cf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
-            <h2 className="font-serif text-2xl text-slate-200 mb-4">Is this what you want?</h2>
-            <p className="text-slate-500 mb-8 max-w-md">You have assessed all four pillars. Your archetype awaits.</p>
-            <div className="flex gap-4">
-              <button onClick={() => setStep('trial-attributes')} className="px-6 py-3 border border-slate-600 text-slate-400 hover:border-slate-500 rounded-lg">
-                Go back
-              </button>
-              <button onClick={handleTrialConfirm} className="px-8 py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium">
-                Yes, reveal my archetype
-              </button>
+            className="min-h-screen flex flex-col items-center justify-center p-6 text-center" style={{ background: 'linear-gradient(to bottom, #87CEEB 0%, #87CEEB 66%, #228B22 66%, #228B22 100%)' }}>
+            <div className="w-full max-w-xl bg-amber-50 border-4 border-amber-900 p-6" style={{ imageRendering: 'pixelated', boxShadow: '8px 8px 0px 0px #8B4513' }}>
+              <h2 className="font-mono text-lg font-bold text-amber-900 mb-4 uppercase">Is this what you want?</h2>
+              <p className="font-mono text-xs text-amber-900 mb-8">You have assessed all four pillars. Your archetype awaits.</p>
+              <div className="flex gap-4 justify-center">
+                <button 
+                  onClick={() => setStep('trial-attributes')} 
+                  className="px-6 py-3 border-4 border-amber-900 bg-gray-300 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-gray-400"
+                  style={{ imageRendering: 'pixelated', transition: 'none' }}
+                >
+                  Go back
+                </button>
+                <button 
+                  onClick={handleTrialConfirm} 
+                  className="px-8 py-3 border-4 border-amber-900 bg-orange-400 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-orange-500"
+                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
+                >
+                  Yes, reveal my archetype
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
 
         {step === 'results' && results && (
           <motion.div key="res" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            className="min-h-screen flex flex-col items-center justify-center p-6 space-y-12">
-            <div className="text-center">
-              <h3 className="font-serif text-5xl text-white tracking-wider mb-2">{results.archetype.name}</h3>
-              <p className="text-slate-500 italic font-light">{results.archetype.desc}</p>
+            className="min-h-screen flex flex-col items-center justify-center p-6 space-y-8" style={{ background: 'linear-gradient(to bottom, #87CEEB 0%, #87CEEB 66%, #228B22 66%, #228B22 100%)' }}>
+            {/* Main Results Box */}
+            <div className="w-full max-w-2xl bg-yellow-50 border-4 border-amber-900 p-6" style={{ imageRendering: 'pixelated', boxShadow: '8px 8px 0px 0px #8B4513' }}>
+              {/* Character Portrait Placeholder */}
+              <div className="w-24 h-24 bg-blue-200 border-4 border-amber-900 mx-auto mb-4 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                <div className="w-16 h-16 bg-amber-300 border-2 border-amber-900 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                  <span className="text-amber-900 font-mono text-2xl font-bold">
+                    {results.archetype.name.charAt(0)}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Archetype Name */}
+              <h3 className="font-mono text-xl font-bold text-amber-900 text-center mb-2 uppercase">{results.archetype.name}</h3>
+              <p className="font-mono text-xs text-amber-900 text-center mb-6">"{results.archetype.desc}"</p>
+              
+              {/* Stats Header */}
+              <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-4 text-center" style={{ imageRendering: 'pixelated' }}>
+                <h4 className="text-amber-50 font-mono text-xs font-bold uppercase">YOUR STATS</h4>
+              </div>
+              
+              {/* Stats Bars */}
+              <div className="space-y-3">
+                {[
+                  { attr: 'V', name: 'Physical', icon: '💪', color: 'bg-red-500' },
+                  { attr: 'R', name: 'Mental', icon: '🧠', color: 'bg-blue-500' },
+                  { attr: 'C', name: 'Social', icon: '👥', color: 'bg-pink-500' },
+                  { attr: 'M', name: 'Intelligent', icon: '📚', color: 'bg-green-500' }
+                ].map(({ attr, name, icon, color }) => {
+                  const score = results.scores?.[attr] ?? 0;
+                  const maxScore = 20; // 4 questions * 5 max points
+                  const percentage = (score / maxScore) * 100;
+                  return (
+                    <div key={attr} className="bg-yellow-50 border-2 border-amber-900 p-3" style={{ imageRendering: 'pixelated' }}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{icon}</span>
+                          <span className="font-mono text-xs font-bold text-amber-900 uppercase">{name}</span>
+                        </div>
+                        <span className="font-mono text-xs font-bold text-amber-900">{score}</span>
+                      </div>
+                      <div className="w-full h-4 bg-amber-900 border border-amber-950" style={{ imageRendering: 'pixelated' }}>
+                        <div 
+                          className={`h-full ${color}`}
+                          style={{ 
+                            width: `${percentage}%`,
+                            imageRendering: 'pixelated'
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-4 mt-6">
+                <button 
+                  onClick={() => setStep('dashboard')} 
+                  className="flex-1 py-3 bg-green-500 border-4 border-green-700 text-white font-mono text-xs font-bold uppercase hover:bg-green-600"
+                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #1a5a1a' }}
+                >
+                  ENTER REALM
+                </button>
+                <button 
+                  className="flex-1 py-3 bg-purple-500 border-4 border-purple-700 text-white font-mono text-xs font-bold uppercase hover:bg-purple-600"
+                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #4a1a5a' }}
+                >
+                  VIEW INVENTORY
+                </button>
+              </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl">
-              {['V','R','C','M'].map((attr) => {
-                const xp = results.attrXP?.[attr] ?? (results.scores?.[attr] ?? 0) * 5;
-                const level = getAttrLevel(xp);
-                const xpInfo = getAttrXPInLevel(xp);
-                return (
-                  <div key={attr} className={`p-4 bg-white/5 border border-white/10 rounded-xl text-center ${results.primaryNeed === attr ? 'border-amber-500/50 bg-amber-500/5' : ''}`}>
-                    <div className="text-[10px] uppercase text-slate-500 mb-1">{attr}</div>
-                    <div className="text-2xl font-serif">Lv{level}</div>
-                    <div className="text-xs text-slate-500">{xpInfo.current}/{xpInfo.needed} XP</div>
-                  </div>
-                );
-              })}
-            </div>
-            <button onClick={() => setStep('dashboard')} className="flex items-center gap-2 text-amber-500 uppercase tracking-widest text-xs font-bold hover:gap-4 transition-all">
-              Claim the Crown <ChevronRight size={16} />
-            </button>
           </motion.div>
         )}
 
@@ -559,19 +727,18 @@ export default function App() {
               {/* Profile view */}
               {profileView ? (
                 <div className="min-h-[60vh] space-y-6 pb-6">
-                  {/* Header with gradient background */}
-                  <div className="relative -mx-4 -mt-4 md:-mx-6 md:-mt-6 px-4 pt-4 md:px-6 md:pt-6 pb-8 rounded-b-3xl overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/30 via-pink-500/30 to-purple-600/30"></div>
+                  {/* Header */}
+                  <div className="relative -mx-4 -mt-4 md:-mx-6 md:-mt-6 px-4 pt-4 md:px-6 md:pt-6 pb-8 bg-purple-200 border-b-4 border-purple-900" style={{ imageRendering: 'pixelated' }}>
                     <div className="relative flex items-center justify-between mb-6">
                       <div className="w-8 h-8 flex items-center justify-center">
-                        <Zap size={20} className="text-amber-500" />
+                        <Zap size={20} className="text-amber-900" style={{ imageRendering: 'pixelated' }} />
                       </div>
                       <div className="text-center">
-                        <div className="text-sm font-serif text-slate-200 mb-1">Profile</div>
+                        <div className="text-sm font-mono text-amber-900 mb-1 uppercase">Profile</div>
                         <div className="flex justify-center gap-1">
-                          <div className="w-1 h-1 rounded-full bg-amber-500/60"></div>
-                          <div className="w-1 h-1 rounded-full bg-slate-500/40"></div>
-                          <div className="w-1 h-1 rounded-full bg-slate-500/40"></div>
+                          <div className="w-2 h-2 bg-amber-900"></div>
+                          <div className="w-2 h-2 bg-amber-700"></div>
+                          <div className="w-2 h-2 bg-amber-700"></div>
                         </div>
                       </div>
                       <div className="w-8 h-8 flex items-center justify-center">
@@ -580,13 +747,9 @@ export default function App() {
                     
                     {/* Profile Picture and Info */}
                     <div className="relative flex flex-col items-center">
-                      <div className="w-24 h-24 relative mb-3">
-                        {/* Hexagonal-like shape using clip-path */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/40 via-purple-500/30 to-pink-500/40" 
-                             style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}></div>
-                        <div className="absolute inset-1 bg-salar-card flex items-center justify-center"
-                             style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}>
-                          <span className="text-amber-500 font-serif text-3xl">
+                      <div className="w-24 h-24 bg-blue-200 border-4 border-amber-900 mb-3 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                        <div className="w-16 h-16 bg-amber-300 border-2 border-amber-900 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                          <span className="text-amber-900 font-mono text-2xl font-bold">
                             {userName ? userName.charAt(0).toUpperCase() : (results.archetype.name.charAt(4) || 'S')}
                           </span>
                         </div>
@@ -598,31 +761,35 @@ export default function App() {
                               type="text"
                               value={tempName}
                               onChange={(e) => setTempName(e.target.value)}
-                              className="bg-salar-card border border-amber-500/30 rounded-lg px-3 py-1 text-slate-200 font-serif text-xl text-center focus:outline-none focus:border-amber-500/60"
+                              className="bg-slate-100 border-2 border-amber-900 px-3 py-1 text-amber-900 font-mono text-sm text-center focus:outline-none"
                               placeholder="Enter your name"
                               autoFocus
+                              style={{ imageRendering: 'pixelated' }}
                             />
                             <button
                               onClick={handleSaveName}
-                              className="p-1.5 rounded-lg bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 transition-colors"
+                              className="p-1.5 bg-orange-400 border-2 border-amber-900 text-amber-900 hover:bg-orange-500"
+                              style={{ imageRendering: 'pixelated', transition: 'none' }}
                             >
-                              <Save size={16} />
+                              <Save size={14} />
                             </button>
                             <button
                               onClick={handleCancelEditName}
-                              className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-700/70 transition-colors"
+                              className="p-1.5 bg-slate-300 border-2 border-amber-900 text-amber-900 hover:bg-slate-400"
+                              style={{ imageRendering: 'pixelated', transition: 'none' }}
                             >
                               <ChevronLeft size={16} />
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 justify-center mb-1">
-                            <h2 className="font-serif text-2xl font-bold text-slate-100">
+                            <h2 className="font-mono text-xl font-bold text-amber-900 uppercase">
                               {userName || 'TestUser'}
                             </h2>
                             <button
                               onClick={handleEditName}
-                              className="p-1 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                              className="p-1 bg-amber-100 border-2 border-amber-900 text-amber-900 hover:bg-orange-200"
+                              style={{ imageRendering: 'pixelated', transition: 'none' }}
                             >
                               <Edit2 size={14} />
                             </button>
@@ -633,13 +800,14 @@ export default function App() {
                   </div>
 
                   {/* Description Section */}
-                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
+                  <div className="p-4 bg-amber-50 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
                     <div className="flex items-center justify-between mb-3">
-                      <h3 className="font-serif text-lg font-bold text-slate-200">About Me</h3>
+                      <h3 className="font-mono text-sm font-bold text-amber-900 uppercase">About Me</h3>
                       {!editingDescription && (
                         <button
                           onClick={handleEditDescription}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                          className="p-1.5 bg-amber-100 border-2 border-amber-900 text-amber-900 hover:bg-orange-200"
+                          style={{ imageRendering: 'pixelated', transition: 'none' }}
                         >
                           <Edit2 size={16} />
                         </button>
@@ -650,27 +818,30 @@ export default function App() {
                         <textarea
                           value={tempDescription}
                           onChange={(e) => setTempDescription(e.target.value)}
-                          className="w-full bg-white/5 border border-amber-500/30 rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-amber-500/60 resize-none"
+                          className="w-full bg-slate-100 border-2 border-amber-900 px-3 py-2 text-amber-900 font-mono text-xs focus:outline-none resize-none"
                           placeholder="Write a description about yourself... (This will be used for generating personalized tasks)"
                           rows={4}
+                          style={{ imageRendering: 'pixelated' }}
                         />
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={handleCancelEditDescription}
-                            className="px-3 py-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-700/70 transition-colors text-sm"
+                            className="px-3 py-1.5 bg-slate-300 border-2 border-amber-900 text-amber-900 hover:bg-slate-400 font-mono text-xs"
+                            style={{ imageRendering: 'pixelated', transition: 'none' }}
                           >
                             Cancel
                           </button>
                           <button
                             onClick={handleSaveDescription}
-                            className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-500 hover:bg-amber-500/30 transition-colors text-sm flex items-center gap-1"
+                            className="px-3 py-1.5 bg-orange-400 border-2 border-amber-900 text-amber-900 hover:bg-orange-500 font-mono text-xs flex items-center gap-1"
+                            style={{ imageRendering: 'pixelated', transition: 'none' }}
                           >
                             <Save size={14} /> Save
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-slate-400 leading-relaxed">
+                      <p className="text-xs font-mono text-amber-900 leading-relaxed">
                         {userDescription || 'No description yet. Click the edit button to add one.'}
                       </p>
                     )}
@@ -680,9 +851,10 @@ export default function App() {
                   <div className="pt-4">
                     <button
                       onClick={resetProfile}
-                      className="w-full py-3 px-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-colors flex items-center justify-center gap-2 font-medium"
+                      className="w-full py-3 px-4 border-4 border-red-900 bg-red-400 text-red-900 hover:bg-red-500 font-mono text-xs font-bold uppercase flex items-center justify-center gap-2"
+                      style={{ imageRendering: 'pixelated', transition: 'none' }}
                     >
-                      <LogOut size={18} />
+                      <LogOut size={18} style={{ imageRendering: 'pixelated' }} />
                       Log Out (Reset for Demo)
                     </button>
                   </div>
@@ -878,21 +1050,21 @@ export default function App() {
               {/* Pixel-art style dashboard */}
               <div className="space-y-4">
                 {/* Main Profile and Stats Section */}
-                <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
+                <div className="p-4 bg-amber-50 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Character Avatar (Left) */}
                     <div className="flex flex-col items-center">
-                      <div className="w-24 h-24 bg-blue-400/20 border-4 border-amber-900/40 mb-2 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
-                        <div className="w-16 h-16 bg-amber-500/30 border-2 border-amber-900/50 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
-                          <span className="text-amber-500 font-serif text-3xl font-bold">
+                      <div className="w-24 h-24 bg-blue-200 border-4 border-amber-900 mb-2 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                        <div className="w-16 h-16 bg-amber-300 border-2 border-amber-900 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                          <span className="text-amber-900 font-mono text-2xl font-bold">
                             {userName ? userName.charAt(0).toUpperCase() : (results.archetype.name.charAt(4) || 'S')}
                           </span>
                         </div>
                       </div>
-                      <button className="w-full py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs mb-2 hover:bg-amber-500/30 transition-colors" style={{ imageRendering: 'pixelated' }}>
-                        CUSTOMIZE
+                      <button className="w-full py-2 bg-orange-500 border-2 border-amber-900 text-black font-mono text-xs font-bold uppercase mb-2 hover:bg-orange-400" style={{ imageRendering: 'pixelated', transition: 'none' }}>
+                        CLICK ME
                       </button>
-                      <div className="w-full py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs" style={{ imageRendering: 'pixelated' }}>
+                      <div className="w-full py-2 bg-orange-200 border-2 border-amber-900 text-amber-900 font-mono text-xs font-bold uppercase" style={{ imageRendering: 'pixelated' }}>
                         {results.archetype.name.toUpperCase()}
                       </div>
                     </div>
@@ -900,39 +1072,39 @@ export default function App() {
                     {/* Game Statistics (Right) */}
                     <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-3">
                       {/* LEVEL */}
-                      <div className="bg-salar-card border-2 border-amber-900/40 p-3" style={{ imageRendering: 'pixelated' }}>
-                        <div className="text-xs font-bold text-amber-500/80 mb-1">LEVEL</div>
-                        <div className="text-2xl font-bold text-amber-500">{results.level}</div>
+                      <div className="bg-slate-100 border-2 border-amber-900 p-3" style={{ imageRendering: 'pixelated' }}>
+                        <div className="text-xs font-mono font-bold text-amber-900 mb-1 uppercase">LEVEL</div>
+                        <div className="text-2xl font-mono font-bold text-amber-900">{results.level}</div>
                       </div>
 
                       {/* GOLD */}
-                      <div className="bg-salar-card border-2 border-amber-900/40 p-3" style={{ imageRendering: 'pixelated' }}>
-                        <div className="text-xs font-bold text-amber-500/80 mb-1">GOLD</div>
+                      <div className="bg-slate-100 border-2 border-amber-900 p-3" style={{ imageRendering: 'pixelated' }}>
+                        <div className="text-xs font-mono font-bold text-amber-900 mb-1 uppercase">GOLD</div>
                         <div className="flex items-center gap-1">
-                          <span className="text-2xl font-bold text-amber-500">{results.coins ?? 0}</span>
-                          <Coins size={16} className="text-amber-500" />
+                          <span className="text-2xl font-mono font-bold text-amber-900">{results.coins ?? 0}</span>
+                          <Coins size={16} className="text-amber-900" style={{ imageRendering: 'pixelated' }} />
                         </div>
                       </div>
 
                       {/* EXPERIENCE */}
-                      <div className="bg-salar-card border-2 border-amber-900/40 p-3 md:col-span-1 col-span-2" style={{ imageRendering: 'pixelated' }}>
-                        <div className="text-xs font-bold text-amber-500/80 mb-1">EXPERIENCE</div>
-                        <div className="text-sm text-amber-500 mb-1">{results.xp} XP</div>
+                      <div className="bg-slate-100 border-2 border-amber-900 p-3 md:col-span-1 col-span-2" style={{ imageRendering: 'pixelated' }}>
+                        <div className="text-xs font-mono font-bold text-amber-900 mb-1 uppercase">EXPERIENCE</div>
+                        <div className="text-sm font-mono text-amber-900 mb-1">{results.xp} XP</div>
                         {(() => {
                           const xpInfo = getTotalXPInLevel(results.xp);
                           const progressPercent = (xpInfo.current / xpInfo.needed) * 100;
                           return (
                             <>
-                              <div className="w-full h-3 bg-amber-900/30 border border-amber-900/50 mb-1" style={{ imageRendering: 'pixelated' }}>
+                              <div className="w-full h-4 bg-amber-900 border-2 border-amber-950 mb-1" style={{ imageRendering: 'pixelated' }}>
                                 <div 
-                                  className="h-full bg-amber-500 border-r border-amber-900/50"
+                                  className="h-full bg-amber-600"
                                   style={{ 
                                     width: `${Math.min(100, progressPercent)}%`,
                                     imageRendering: 'pixelated'
                                   }}
                                 ></div>
                               </div>
-                              <div className="text-xs text-slate-400">{xpInfo.needed - xpInfo.current} XP to next level</div>
+                              <div className="text-xs font-mono text-amber-900">{xpInfo.needed - xpInfo.current} XP to next level</div>
                             </>
                           );
                         })()}
@@ -944,20 +1116,20 @@ export default function App() {
                         const level = getAttrLevel(xp);
                         const xpInfo = getAttrXPInLevel(xp);
                         const icons = [
-                          <Zap key="v" size={14} className="text-yellow-500" />,
-                          <Sparkles key="r" size={14} className="text-pink-500" />,
-                          <User key="c" size={14} className="text-blue-500" />,
-                          <Zap key="m" size={14} className="text-green-500" />
+                          <Zap key="v" size={14} className="text-yellow-600" style={{ imageRendering: 'pixelated' }} />,
+                          <Sparkles key="r" size={14} className="text-pink-600" style={{ imageRendering: 'pixelated' }} />,
+                          <User key="c" size={14} className="text-blue-600" style={{ imageRendering: 'pixelated' }} />,
+                          <Zap key="m" size={14} className="text-green-600" style={{ imageRendering: 'pixelated' }} />
                         ];
                         const names = ['Physical', 'Mental', 'Social', 'Intelligent'];
                         return (
-                          <div key={attr} className="bg-salar-card border-2 border-amber-900/40 p-2" style={{ imageRendering: 'pixelated' }}>
+                          <div key={attr} className="bg-slate-100 border-2 border-amber-900 p-2" style={{ imageRendering: 'pixelated' }}>
                             <div className="flex items-center gap-1 mb-1">
                               {icons[idx]}
-                              <span className="text-xs font-bold text-amber-500/80">{names[idx]}</span>
+                              <span className="text-xs font-mono font-bold text-amber-900 uppercase">{names[idx]}</span>
                             </div>
-                            <div className="text-lg font-bold text-amber-500">Lv{level}</div>
-                            <div className="text-xs text-slate-400">{xpInfo.current}/{xpInfo.needed} XP</div>
+                            <div className="text-lg font-mono font-bold text-amber-900">{level}</div>
+                            <div className="text-xs font-mono text-amber-700">{xpInfo.current}/{xpInfo.needed} XP</div>
                           </div>
                         );
                       })}
@@ -966,28 +1138,28 @@ export default function App() {
                 </div>
 
                 {/* Daily Wisdom Section */}
-                <div className="p-4 bg-purple-900/20 border-4 border-purple-900/40" style={{ imageRendering: 'pixelated' }}>
+                <div className="p-4 bg-purple-200 border-4 border-purple-900" style={{ imageRendering: 'pixelated' }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Sparkles size={16} className="text-yellow-500" />
-                    <h3 className="text-sm font-bold text-purple-300 uppercase">Daily Wisdom</h3>
+                    <Sparkles size={16} className="text-yellow-600" style={{ imageRendering: 'pixelated' }} />
+                    <h3 className="text-sm font-mono font-bold text-purple-900 uppercase">Daily Wisdom</h3>
                   </div>
-                  <p className="text-slate-200 italic text-sm">"{results.archetype.desc}"</p>
+                  <p className="text-slate-800 font-mono text-xs">"{results.archetype.desc}"</p>
                 </div>
 
                 {/* Generate Tasks and Quick Tasks Section */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Generate Tasks Section */}
-                  <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
-                    <div className="bg-green-600/40 border-2 border-green-900/50 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
-                      <h3 className="text-sm font-bold text-white uppercase">Generate Tasks</h3>
+                  <div className="p-4 bg-amber-50 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
+                    <div className="bg-blue-600 border-2 border-blue-900 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
+                      <h3 className="text-sm font-mono font-bold text-white uppercase">Daily Quests</h3>
                     </div>
-                    <div className="p-4 bg-salar-card border-2 border-amber-900/40 flex flex-col items-center justify-center min-h-[120px]" style={{ imageRendering: 'pixelated' }}>
+                    <div className="p-4 bg-slate-100 border-2 border-amber-900 flex flex-col items-center justify-center min-h-[120px]" style={{ imageRendering: 'pixelated' }}>
                       <div className="text-center">
-                        <Zap size={32} className="text-amber-500/50 mx-auto mb-2" />
-                        <p className="text-sm text-slate-400 mb-3">Task generation coming soon</p>
+                        <Zap size={32} className="text-amber-700 mx-auto mb-2" style={{ imageRendering: 'pixelated' }} />
+                        <p className="text-xs font-mono text-amber-900 mb-3">Task generation coming soon</p>
                         <button 
-                          className="px-6 py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs hover:bg-amber-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          style={{ imageRendering: 'pixelated' }}
+                          className="px-6 py-2 bg-orange-500 border-2 border-amber-900 text-black font-mono text-xs font-bold uppercase hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{ imageRendering: 'pixelated', transition: 'none' }}
                           disabled
                         >
                           GENERATE
@@ -997,9 +1169,9 @@ export default function App() {
                   </div>
 
                   {/* Quick Tasks Dashboard */}
-                  <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
-                    <div className="bg-orange-600/40 border-2 border-orange-900/50 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
-                      <h3 className="text-sm font-bold text-white uppercase">Quick Tasks</h3>
+                  <div className="p-4 bg-amber-50 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
+                    <div className="bg-orange-600 border-2 border-orange-900 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
+                      <h3 className="text-sm font-mono font-bold text-white uppercase">Quick Tasks</h3>
                     </div>
                     <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
                       {(() => {
@@ -1013,40 +1185,40 @@ export default function App() {
                             const { xp, coins } = getTaskRewards(task);
                             const isCompleted = completedTaskIds.includes(task.id);
                             const attrIcons = {
-                              'V': <Zap size={12} className="text-yellow-500" />,
-                              'R': <Sparkles size={12} className="text-pink-500" />,
-                              'C': <User size={12} className="text-blue-500" />,
-                              'M': <Zap size={12} className="text-green-500" />
+                              'V': <Zap size={12} className="text-yellow-600" style={{ imageRendering: 'pixelated' }} />,
+                              'R': <Sparkles size={12} className="text-pink-600" style={{ imageRendering: 'pixelated' }} />,
+                              'C': <User size={12} className="text-blue-600" style={{ imageRendering: 'pixelated' }} />,
+                              'M': <Zap size={12} className="text-green-600" style={{ imageRendering: 'pixelated' }} />
                             };
                             const taskAttr = Object.keys(task.attrXP || {})[0];
                             return (
                               <div
                                 key={task.id}
-                                className={`bg-salar-card border-2 p-2 flex items-center justify-between transition-colors ${
+                                className={`bg-slate-100 border-2 p-2 flex items-center justify-between ${
                                   isCompleted 
-                                    ? 'border-gray-600/40 opacity-50' 
-                                    : 'border-amber-900/40 hover:bg-amber-500/10'
+                                    ? 'border-gray-500 opacity-50' 
+                                    : 'border-amber-900 hover:bg-amber-100'
                                 }`}
-                                style={{ imageRendering: 'pixelated' }}
+                                style={{ imageRendering: 'pixelated', transition: 'none' }}
                               >
                                 <div className="flex items-center gap-1.5 flex-1 min-w-0">
                                   {taskAttr && attrIcons[taskAttr]}
-                                  <span className={`text-xs truncate ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                                  <span className={`text-xs font-mono truncate ${isCompleted ? 'text-gray-600 line-through' : 'text-amber-900'}`}>
                                     {task.text}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className={`text-[10px] font-bold ${isCompleted ? 'text-gray-500' : 'text-amber-500'}`}>
+                                  <span className={`text-[10px] font-mono font-bold ${isCompleted ? 'text-gray-600' : 'text-amber-900'}`}>
                                     {isCompleted ? '✓' : `+${xp}`}
                                   </span>
                                   {!isCompleted && (
                                     <button
                                       onClick={() => handleTaskComplete(task, true)}
-                                      className="w-5 h-5 border-2 border-amber-500/50 bg-amber-500/10 flex items-center justify-center hover:bg-amber-500/30 transition-colors"
+                                      className="w-5 h-5 border-2 border-amber-900 bg-orange-300 flex items-center justify-center hover:bg-orange-400"
                                       title={`Complete: +${xp} XP, +${coins} coins`}
-                                      style={{ imageRendering: 'pixelated' }}
+                                      style={{ imageRendering: 'pixelated', transition: 'none' }}
                                     >
-                                      <Check size={10} className="text-amber-500" />
+                                      <Check size={10} className="text-amber-900" />
                                     </button>
                                   )}
                                 </div>
@@ -1054,8 +1226,8 @@ export default function App() {
                             );
                           })
                         ) : (
-                          <div className="p-3 bg-salar-card border-2 border-amber-900/40 text-center" style={{ imageRendering: 'pixelated' }}>
-                            <p className="text-xs text-slate-500">No quick tasks available</p>
+                          <div className="p-3 bg-slate-100 border-2 border-amber-900 text-center" style={{ imageRendering: 'pixelated' }}>
+                            <p className="text-xs font-mono text-amber-900">No quick tasks available</p>
                           </div>
                         );
                       })()}
@@ -1064,7 +1236,7 @@ export default function App() {
                 </div>
 
                 {/* Game Screen - Battle Area */}
-                <div className="p-4 bg-green-600/20 border-4 border-green-900/40 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px' }}>
+                <div className="p-4 bg-green-200 border-4 border-green-900 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px' }}>
                   <div className="relative w-full h-full" style={{ minHeight: '250px' }}>
                     {/* User Character */}
                     {(() => {
@@ -1075,9 +1247,10 @@ export default function App() {
                       
                       return (
                         <motion.div
-                          className="absolute w-12 h-12 rounded-full bg-blue-500 border-4 border-blue-900 flex items-center justify-center z-0"
+                          className="absolute w-12 h-12 bg-blue-500 border-4 border-blue-900 flex items-center justify-center z-0"
                           style={{ 
-                            imageRendering: 'pixelated'
+                            imageRendering: 'pixelated',
+                            clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'
                           }}
                           animate={
                             attackingEnemy !== null && enemyPos
@@ -1102,7 +1275,7 @@ export default function App() {
                             ease: "easeInOut"
                           }}
                         >
-                          <span className="text-white font-bold text-lg">YOU</span>
+                          <span className="text-white font-mono font-bold text-xs">YOU</span>
                         </motion.div>
                       );
                     })()}
@@ -1122,12 +1295,13 @@ export default function App() {
                       return (
                         <motion.div
                           key={task.id}
-                          className="absolute w-10 h-10 rounded-full border-4 border-red-900 bg-red-500 flex items-center justify-center z-0"
+                          className="absolute w-10 h-10 bg-red-500 border-4 border-red-900 flex items-center justify-center z-0"
                           style={{
                             left: `${enemyPos.x}%`,
                             top: `${enemyPos.y}%`,
                             transform: 'translate(-50%, -50%)',
-                            imageRendering: 'pixelated'
+                            imageRendering: 'pixelated',
+                            clipPath: 'polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)'
                           }}
                           animate={
                             isBeingAttacked
@@ -1143,7 +1317,7 @@ export default function App() {
                             ease: "easeInOut"
                           }}
                         >
-                          <span className="text-white font-bold text-xs">EN</span>
+                          <span className="text-white font-mono font-bold text-[8px]">EN</span>
                         </motion.div>
                       );
                     })}
@@ -1151,49 +1325,49 @@ export default function App() {
                 </div>
 
                 {/* Daily Quests Section */}
-                <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
-                  <div className="bg-blue-600/40 border-2 border-blue-900/50 p-2 mb-3" style={{ imageRendering: 'pixelated' }}>
-                    <h3 className="text-sm font-bold text-white uppercase">Daily Quests</h3>
+                <div className="p-4 bg-amber-50 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
+                  <div className="bg-blue-600 border-2 border-blue-900 p-2 mb-3" style={{ imageRendering: 'pixelated' }}>
+                    <h3 className="text-sm font-mono font-bold text-white uppercase">Daily Quests</h3>
                   </div>
                   <div className="space-y-2">
                     {boardTasks.slice(0, 5).map((task) => {
                       const { xp, coins } = getTaskRewards(task);
                       const isCompleted = completedTaskIds.includes(task.id);
                       const attrIcons = {
-                        'V': <Zap size={14} className="text-yellow-500" />,
-                        'R': <Sparkles size={14} className="text-pink-500" />,
-                        'C': <User size={14} className="text-blue-500" />,
-                        'M': <Zap size={14} className="text-green-500" />
+                        'V': <Zap size={14} className="text-yellow-600" style={{ imageRendering: 'pixelated' }} />,
+                        'R': <Sparkles size={14} className="text-pink-600" style={{ imageRendering: 'pixelated' }} />,
+                        'C': <User size={14} className="text-blue-600" style={{ imageRendering: 'pixelated' }} />,
+                        'M': <Zap size={14} className="text-green-600" style={{ imageRendering: 'pixelated' }} />
                       };
                       const taskAttr = Object.keys(task.attrXP || {})[0];
                       return (
                         <div
                           key={task.id}
-                          className={`bg-amber-50/5 border-2 p-2 flex items-center justify-between transition-colors ${
+                          className={`bg-slate-100 border-2 p-2 flex items-center justify-between ${
                             isCompleted 
-                              ? 'border-gray-600/40 opacity-50' 
-                              : 'border-amber-900/40 hover:bg-amber-500/10'
+                              ? 'border-gray-500 opacity-50' 
+                              : 'border-amber-900 hover:bg-amber-100'
                           }`}
-                          style={{ imageRendering: 'pixelated' }}
+                          style={{ imageRendering: 'pixelated', transition: 'none' }}
                         >
                           <div className="flex items-center gap-2 flex-1">
                             {taskAttr && attrIcons[taskAttr]}
-                            <span className={`text-sm flex-1 ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                            <span className={`text-xs font-mono flex-1 ${isCompleted ? 'text-gray-600 line-through' : 'text-amber-900'}`}>
                               {task.text}
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`text-xs font-bold ${isCompleted ? 'text-gray-500' : 'text-amber-500'}`}>
+                            <span className={`text-[10px] font-mono font-bold ${isCompleted ? 'text-gray-600' : 'text-amber-900'}`}>
                               {isCompleted ? '✓' : `+${xp}`}
                             </span>
                             {!isCompleted && (
                               <button
                                 onClick={() => handleTaskComplete(task)}
-                                className="w-6 h-6 border-2 border-amber-500/50 bg-amber-500/10 flex items-center justify-center hover:bg-amber-500/30 transition-colors"
+                                className="w-6 h-6 border-2 border-amber-900 bg-orange-300 flex items-center justify-center hover:bg-orange-400"
                                 title={`Complete: +${xp} XP, +${coins} coins`}
-                                style={{ imageRendering: 'pixelated' }}
+                                style={{ imageRendering: 'pixelated', transition: 'none' }}
                               >
-                                <Check size={12} className="text-amber-500" />
+                                <Check size={12} className="text-amber-900" />
                               </button>
                             )}
                           </div>
@@ -1201,7 +1375,7 @@ export default function App() {
                       );
                     })}
                     {boardTasks.length === 0 && (
-                      <p className="text-sm text-slate-500 italic text-center py-2">All quests completed! Great work!</p>
+                      <p className="text-xs font-mono text-amber-900 text-center py-2">All quests completed! Great work!</p>
                     )}
                   </div>
                 </div>
@@ -1211,33 +1385,36 @@ export default function App() {
             </div>
 
             {/* Bottom nav bar */}
-            <nav className="fixed bottom-0 left-0 right-0 h-16 bg-salar-card border-t border-white/5 flex items-center justify-around px-4 z-50">
+            <nav className="fixed bottom-0 left-0 right-0 h-16 bg-amber-50 border-t-4 border-amber-900 flex items-center justify-around px-4 z-50" style={{ imageRendering: 'pixelated' }}>
               <button
                 onClick={() => { setProfileView(true); setMapView(false); setSelectedLocation(null); }}
-                className={`p-2 rounded-lg transition-colors ${profileView ? 'text-amber-500 bg-amber-500/10' : 'text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10'}`}
+                className={`p-2 border-2 border-amber-900 ${profileView ? 'bg-orange-400 text-amber-900' : 'bg-amber-100 text-amber-900 hover:bg-orange-200'}`}
                 title="Profile"
+                style={{ imageRendering: 'pixelated', transition: 'none' }}
               >
-                <User size={24} />
+                <User size={20} style={{ imageRendering: 'pixelated' }} />
               </button>
               <button
                 onClick={() => { setMapView(true); setProfileView(false); setSelectedLocation(null); }}
-                className={`p-2 rounded-lg transition-colors ${mapView ? 'text-amber-500 bg-amber-500/10' : 'text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10'}`}
+                className={`p-2 border-2 border-amber-900 ${mapView ? 'bg-orange-400 text-amber-900' : 'bg-amber-100 text-amber-900 hover:bg-orange-200'}`}
                 title="Maps"
+                style={{ imageRendering: 'pixelated', transition: 'none' }}
               >
-                <MapPin size={24} />
+                <MapPin size={20} style={{ imageRendering: 'pixelated' }} />
               </button>
               <button
                 onClick={() => { setMapView(false); setProfileView(false); setSelectedLocation(null); }}
-                className={`p-3 rounded-full transition-colors ${!mapView && !profileView ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'text-slate-400 hover:text-amber-500 hover:bg-white/5 border border-white/5'}`}
+                className={`p-3 border-2 border-amber-900 ${!mapView && !profileView ? 'bg-orange-500 text-amber-900' : 'bg-amber-100 text-amber-900 hover:bg-orange-200'}`}
                 title="Home"
+                style={{ imageRendering: 'pixelated', transition: 'none' }}
               >
-                <Home size={24} />
+                <Home size={20} style={{ imageRendering: 'pixelated' }} />
               </button>
-              <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
-                <Lock size={22} />
+              <button className="p-2 border-2 border-amber-900 bg-amber-100 text-amber-700 opacity-50 cursor-not-allowed" disabled title="Coming soon" style={{ imageRendering: 'pixelated' }}>
+                <Lock size={18} style={{ imageRendering: 'pixelated' }} />
               </button>
-              <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
-                <Lock size={22} />
+              <button className="p-2 border-2 border-amber-900 bg-amber-100 text-amber-700 opacity-50 cursor-not-allowed" disabled title="Coming soon" style={{ imageRendering: 'pixelated' }}>
+                <Lock size={18} style={{ imageRendering: 'pixelated' }} />
               </button>
             </nav>
           </motion.div>

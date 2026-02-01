@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;700&family=Press+Start+2P&display=swap');
 
 @theme {
   /* Define your Research-Backed Colors */
@@ -9,6 +9,7 @@
   /* Define your Narrative Fonts */
   --font-serif: "EB Garamond", serif;
   --font-sans: "Inter", sans-serif;
+  --font-pixel: "Press Start 2P", monospace;
 }
 
 /* Apply the background to the whole kingdom */
@@ -20,6 +21,56 @@ body {
 
 /* Pixel-art styling */
 [style*="imageRendering: 'pixelated'"] {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+/* Pixel-art utility classes */
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+
+.pixel-box {
+  border-radius: 0 !important;
+  border: 3px solid #8B4513;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.pixel-button {
+  border-radius: 0 !important;
+  border: 2px solid #8B4513;
+  background: #FF8C00;
+  color: #000;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  padding: 8px 12px;
+  text-transform: uppercase;
+  box-shadow: none;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+  transition: none !important;
+}
+
+.pixel-button:hover {
+  background: #FFA500;
+  transform: none;
+}
+
+.pixel-text {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  line-height: 1.6;
+  text-transform: uppercase;
   image-rendering: pixelated;
   image-rendering: -moz-crisp-edges;
   image-rendering: crisp-edges;
