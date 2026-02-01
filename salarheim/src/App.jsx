@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw, RefreshCw, Coins, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getQuestsByPillar, getQuestRewards } from './willQuests';
 
 // --- Research Data ---
 const QUESTIONS = [
@@ -49,6 +50,9 @@ export default function App() {
   const [results, setResults] = useState(() => JSON.parse(localStorage.getItem('sh_results')) || null);
   const [mapView, setMapView] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
+  const [selectedQuest, setSelectedQuest] = useState(null);
+  const [questFlowStep, setQuestFlowStep] = useState(null); // 'confirm' | 'availability' | 'in-progress' | 'complete'
+  const [questStepIndex, setQuestStepIndex] = useState(0);
 
   // Persistence Hook
   useEffect(() => {
@@ -83,6 +87,7 @@ export default function App() {
       archetype: ARCHETYPES[code] || { name: 'The Wayward Alchemist', desc: 'Your path is unique and unwritten.' },
       level: initialLevel,
       xp: initialLevel * 1000, // Total XP based on curve TXR = 1000 * L^2
+      coins: results?.coins ?? 0,
       primaryNeed: Object.keys(scores).reduce((a, b) => scores[a] < scores[b] ? a : b)
     });
     setStep('results');
@@ -93,8 +98,65 @@ export default function App() {
     setCurrentQ(0);
     setAnswers({});
     setResults(null);
+    setSelectedQuest(null);
+    setQuestFlowStep(null);
     localStorage.removeItem('sh_step');
     localStorage.removeItem('sh_results');
+  };
+
+  const handleQuestClick = (quest) => {
+    if (quest.unlocked !== true) return;
+    setSelectedQuest(quest);
+    setQuestFlowStep('confirm');
+    setQuestStepIndex(0);
+  };
+
+  const handleQuestProceed = () => {
+    setQuestFlowStep('availability');
+  };
+
+  const handleQuestRegenerate = () => {
+    const quests = getQuestsByPillar(selectedQuest.pillar).filter((q) => q.unlocked && q.id !== selectedQuest.id);
+    if (quests.length > 0) {
+      const randomQuest = quests[Math.floor(Math.random() * quests.length)];
+      setSelectedQuest(randomQuest);
+      setQuestFlowStep('confirm');
+    } else {
+      setSelectedQuest(null);
+      setQuestFlowStep(null);
+    }
+  };
+
+  const handleQuestAvailable = () => {
+    setQuestFlowStep('in-progress');
+    setQuestStepIndex(0);
+  };
+
+  const handleQuestStepNext = () => {
+    const steps = selectedQuest?.steps ?? [];
+    if (questStepIndex < steps.length - 1) {
+      setQuestStepIndex(questStepIndex + 1);
+    } else {
+      setQuestFlowStep('complete');
+      const { xp, coins } = getQuestRewards(selectedQuest);
+      setResults((prev) => ({
+        ...prev,
+        xp: (prev.xp ?? 0) + xp,
+        coins: (prev.coins ?? 0) + coins,
+      }));
+    }
+  };
+
+  const handleQuestComplete = () => {
+    setSelectedQuest(null);
+    setQuestFlowStep(null);
+    setQuestStepIndex(0);
+  };
+
+  const exitQuestFlow = () => {
+    setSelectedQuest(null);
+    setQuestFlowStep(null);
+    setQuestStepIndex(0);
   };
 
   return (
@@ -177,17 +239,142 @@ export default function App() {
                         <ChevronLeft size={18} /> Back
                       </button>
                       <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
-                        {selectedLocation === 'V' ? 'Vitality' : selectedLocation === 'R' ? 'Resilience' : selectedLocation === 'C' ? 'Connection' : 'Mastery'} — Quests
+                        {selectedLocation === 'V' ? 'Vitality' : selectedLocation === 'R' ? 'Resilience' : selectedLocation === 'C' ? 'Connection' : 'Mastery'} — Will Quests
                       </div>
-                      <div className="flex flex-wrap gap-3 p-4">
-                        {[1, 2, 3, 4, 5, 6].map((i) => (
-                          <div
-                            key={i}
-                            className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex-shrink-0"
-                            aria-label={`Quest ${i}`}
-                          />
-                        ))}
+                      <div className="relative w-full aspect-[4/3] max-w-2xl min-h-[280px] bg-salar-card rounded-2xl border border-white/5">
+                        {getQuestsByPillar(selectedLocation).map((quest, i) => {
+                          const isLocked = quest.unlocked !== true;
+                          const positions = [
+                            { top: '8%', left: '12%' },
+                            { top: '28%', left: '68%' },
+                            { top: '58%', left: '15%' },
+                            { top: '18%', left: '38%' },
+                            { top: '62%', left: '58%' },
+                            { top: '38%', left: '82%' },
+                          ];
+                          const pos = positions[i % positions.length];
+                          return (
+                            <div
+                              key={quest.id}
+                              className="absolute w-12 h-12 rounded-full flex items-center justify-center transition-all"
+                              style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
+                              title={isLocked ? `${quest.title || 'Quest'} (Locked)` : quest.title}
+                              aria-label={quest.title}
+                            >
+                              {isLocked ? (
+                                <div className="w-full h-full rounded-full bg-slate-800/80 border-2 border-slate-600 flex items-center justify-center opacity-60">
+                                  <Lock size={18} className="text-slate-500" />
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => handleQuestClick(quest)}
+                                  className="w-full h-full rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center hover:scale-110 hover:bg-amber-500/30 hover:border-amber-500/60 transition-transform cursor-pointer"
+                                  aria-label={quest.title}
+                                />
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
+
+                      {/* Quest flow overlay */}
+                      {selectedQuest && questFlowStep && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="fixed inset-0 z-50 bg-salar-dark/95 flex flex-col items-center justify-center p-6"
+                        >
+                          <div className="w-full max-w-lg space-y-6">
+                            {questFlowStep === 'confirm' && (
+                              <>
+                                <h3 className="font-serif text-2xl text-amber-500 text-center">{selectedQuest.title}</h3>
+                                <p className="text-slate-400 text-center text-sm">
+                                  {selectedQuest.subLocation} — {selectedQuest.majorLocation}
+                                </p>
+                                <p className="text-slate-300 text-center">Do you want to proceed with this quest?</p>
+                                <div className="flex gap-4 justify-center">
+                                  <button onClick={exitQuestFlow} className="px-6 py-3 border border-slate-600 text-slate-400 hover:border-slate-500 rounded-lg">
+                                    Cancel
+                                  </button>
+                                  <button onClick={handleQuestProceed} className="px-6 py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg">
+                                    Proceed
+                                  </button>
+                                </div>
+                              </>
+                            )}
+
+                            {questFlowStep === 'availability' && (
+                              <>
+                                <h3 className="font-serif text-2xl text-amber-500 text-center">{selectedQuest.title}</h3>
+                                <p className="text-slate-300 text-center">Are you available to do this quest now?</p>
+                                <div className="flex flex-col gap-3">
+                                  <button onClick={handleQuestAvailable} className="w-full py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium">
+                                    Yes, I'm ready
+                                  </button>
+                                  <button onClick={handleQuestRegenerate} className="w-full py-3 border border-slate-600 text-slate-400 hover:border-slate-500 rounded-lg flex items-center justify-center gap-2">
+                                    <RefreshCw size={18} /> Regenerate quest
+                                  </button>
+                                  <button onClick={exitQuestFlow} className="text-slate-500 text-sm hover:text-slate-400">
+                                    Cancel
+                                  </button>
+                                </div>
+                              </>
+                            )}
+
+                            {questFlowStep === 'in-progress' && (
+                              <>
+                                <div className="flex justify-between items-center">
+                                  <button onClick={exitQuestFlow} className="text-slate-500 text-sm hover:text-slate-400 flex items-center gap-1">
+                                    <ChevronLeft size={16} /> Exit
+                                  </button>
+                                  <span className="text-xs text-slate-500">
+                                    Step {questStepIndex + 1} of {selectedQuest.steps?.length ?? 0}
+                                  </span>
+                                </div>
+                                <h3 className="font-serif text-xl text-amber-500">{selectedQuest.title}</h3>
+                                <p className="text-slate-400 italic text-sm">{selectedQuest.narrativeIntro}</p>
+                                <div className="p-4 bg-salar-card rounded-xl border border-white/5">
+                                  <p className="text-slate-200 leading-relaxed">
+                                    {selectedQuest.steps?.[questStepIndex]}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={handleQuestStepNext}
+                                  className="w-full py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium flex items-center justify-center gap-2"
+                                >
+                                  {questStepIndex < (selectedQuest.steps?.length ?? 1) - 1 ? 'Next step' : 'Complete'} <ChevronRight size={18} />
+                                </button>
+                              </>
+                            )}
+
+                            {questFlowStep === 'complete' && (
+                              <>
+                                <div className="text-center">
+                                  <h3 className="font-serif text-2xl text-amber-500 mb-2">Quest Complete</h3>
+                                  <p className="text-slate-400 italic mb-4">{selectedQuest.signOfCompletion}</p>
+                                  <div className="flex gap-6 justify-center">
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
+                                      <Zap size={20} className="text-amber-500" />
+                                      <span className="text-amber-500 font-bold">+{getQuestRewards(selectedQuest).xp} XP</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
+                                      <Coins size={20} className="text-amber-500" />
+                                      <span className="text-amber-500 font-bold">+{getQuestRewards(selectedQuest).coins} Coins</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={handleQuestComplete}
+                                  className="w-full py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium"
+                                >
+                                  Return to Map
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
                     </>
                   ) : (
                     <div className="relative w-full aspect-[4/3] max-w-xl mx-auto bg-salar-card rounded-2xl border border-white/5 overflow-hidden">
@@ -236,6 +423,7 @@ export default function App() {
                     <div className="font-serif text-amber-500 uppercase tracking-wider text-sm">{results.archetype.name}</div>
                     <div className="text-xs text-slate-500 mt-0.5">Level {results.level}</div>
                     <div className="text-xs text-slate-400 mt-0.5">Exp: {results.xp}</div>
+                    <div className="text-xs text-slate-400">Coins: {results.coins ?? 0}</div>
                     <div className="text-xs text-slate-400">V:{results.scores.V} R:{results.scores.R} C:{results.scores.C} M:{results.scores.M}</div>
                   </div>
                 </div>
