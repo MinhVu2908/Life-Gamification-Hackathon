@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Send, RefreshCw, Coins, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
 import { getTasksForBoard, getTaskRewards, EASY_TASKS } from './easyTasks';
-import { getAttrLevel, getAttrXPInLevel, getTotalLevel, getTotalXPInLevel } from './engine';
+import { getAttrLevel, getAttrXPInLevel, getTotalLevel, getTotalXPInLevel, trialScoreToAttrXP, getTaskAttrXPReward } from './engine';
 
 // --- Research Data --- (4 questions per attribute, 16 total)
 const QUESTIONS = [
@@ -52,8 +52,10 @@ const ARCHETYPES = {
   'LLHH': { name: 'The Cerebral Anchor', desc: 'Strong mind and connection; lacks physical and practical base.' }
 };
 
+// Archetype: L if attribute XP below midpoint of trial max (450/2 = 225), else H
 function getArchetypeFromAttrXP(attrXP) {
-  const code = ['V', 'R', 'C', 'M'].map(attr => ((attrXP ?? {})[attr] ?? 0) < 50 ? 'L' : 'H').join('');
+  const threshold = 225; // half of max attr XP from trial (450)
+  const code = ['V', 'R', 'C', 'M'].map(attr => ((attrXP ?? {})[attr] ?? 0) < threshold ? 'L' : 'H').join('');
   return ARCHETYPES[code] || { name: 'The Wayward Alchemist', desc: 'Your path is unique and unwritten.' };
 }
 
@@ -189,7 +191,13 @@ export default function App() {
   // Persistence Hook
   useEffect(() => {
     localStorage.setItem('sh_step', step);
-    if (results) localStorage.setItem('sh_results', JSON.stringify(results));
+    if (results) {
+      localStorage.setItem('sh_results', JSON.stringify(results));
+      // Set level-at-creation once: standard metric is 10 at creation, then +1 per level gained after that
+      if (localStorage.getItem('sh_initial_level') === null) {
+        localStorage.setItem('sh_initial_level', String(results.level ?? 1));
+      }
+    }
     localStorage.setItem('sh_completed_tasks', JSON.stringify(completedTaskIds));
     localStorage.setItem('sh_completed_quests', JSON.stringify(completedQuestIds));
     localStorage.setItem('sh_user_name', userName);
@@ -229,31 +237,28 @@ export default function App() {
 
   const calculateResults = (finalAnswers) => {
     const scores = { V: 0, R: 0, C: 0, M: 0 };
-    let totalRaw = 0;
     QUESTIONS.forEach(q => {
       scores[q.attr] += finalAnswers[q.id] ?? 0;
-      totalRaw += finalAnswers[q.id] ?? 0;
     });
 
-    // attrXP: unlimited per attribute. Initial from trial (4–20) → *5 = 20–100
+    // Attribute XP from trial: score 4–20 → trialScoreToAttrXP so 20 → level 10 (450 XP)
     const attrXP = {
-      V: (scores.V ?? 0) * 5,
-      R: (scores.R ?? 0) * 5,
-      C: (scores.C ?? 0) * 5,
-      M: (scores.M ?? 0) * 5,
+      V: trialScoreToAttrXP(scores.V ?? 0),
+      R: trialScoreToAttrXP(scores.R ?? 0),
+      C: trialScoreToAttrXP(scores.C ?? 0),
+      M: trialScoreToAttrXP(scores.M ?? 0),
     };
     const archetype = getArchetypeFromAttrXP(attrXP);
-    // Calculate initial total XP based on trial scores (4-20 per attribute, 16-80 total)
-    // Convert to a reasonable starting XP (e.g., 100 XP per point)
-    const initialTotalXP = totalRaw * 100;
-    const initialLevel = getTotalLevel(initialTotalXP);
+    // Total XP = sum of attribute XP (combined); total level from that (max 20 from trial)
+    const totalXP = (attrXP.V ?? 0) + (attrXP.R ?? 0) + (attrXP.C ?? 0) + (attrXP.M ?? 0);
+    const totalLevel = getTotalLevel(totalXP);
     
     setResults({
       scores,
       attrXP,
       archetype,
-      level: initialLevel,
-      xp: initialTotalXP,
+      level: totalLevel,
+      xp: totalXP,
       coins: results?.coins ?? 0,
       primaryNeed: Object.keys(attrXP).reduce((a, b) => attrXP[a] < attrXP[b] ? a : b)
     });
@@ -283,6 +288,7 @@ export default function App() {
     setMapView(false);
     localStorage.removeItem('sh_step');
     localStorage.removeItem('sh_results');
+    localStorage.removeItem('sh_initial_level');
     localStorage.removeItem('sh_completed_tasks');
     localStorage.removeItem('sh_completed_quests');
     localStorage.removeItem('sh_user_name');
@@ -339,22 +345,23 @@ export default function App() {
     
     // Function to update rewards and state
     const updateTaskCompletion = () => {
-      const { xp, coins } = getTaskRewards(task);
-      const attrBonus = task.attrXP ?? {};
+      const { coins } = getTaskRewards(task);
+      const attrBonus = (task.attrXP && Object.keys(task.attrXP).length > 0)
+        ? task.attrXP
+        : getTaskAttrXPReward(task);
       setResults((prev) => {
-        const base = (v, s) => (v ?? (s ?? 0) * 5);
+        const base = (v, s) => (v ?? trialScoreToAttrXP(s ?? 0));
         const newAttrXP = {
           V: base(prev.attrXP?.V, prev.scores?.V) + (attrBonus.V ?? 0),
           R: base(prev.attrXP?.R, prev.scores?.R) + (attrBonus.R ?? 0),
           C: base(prev.attrXP?.C, prev.scores?.C) + (attrBonus.C ?? 0),
           M: base(prev.attrXP?.M, prev.scores?.M) + (attrBonus.M ?? 0),
         };
-        const newTotalXP = (prev.xp ?? 0) + xp;
-        const newTotalLevel = getTotalLevel(newTotalXP);
+        const newTotalXP = (newAttrXP.V ?? 0) + (newAttrXP.R ?? 0) + (newAttrXP.C ?? 0) + (newAttrXP.M ?? 0);
         return {
           ...prev,
           xp: newTotalXP,
-          level: newTotalLevel,
+          level: getTotalLevel(newTotalXP),
           coins: (prev.coins ?? 0) + coins,
           attrXP: newAttrXP,
           archetype: getArchetypeFromAttrXP(newAttrXP),
@@ -414,21 +421,20 @@ export default function App() {
       setQuestStepIndex(questStepIndex + 1);
     } else {
       setQuestFlowStep('complete');
-      const { xp, coins, attrXP: attrBonus } = getQuestRewards(selectedQuest);
+      const { coins, attrXP: attrBonus } = getQuestRewards(selectedQuest);
       setResults((prev) => {
-        const base = (v, s) => (v ?? (s ?? 0) * 5);
+        const base = (v, s) => (v ?? trialScoreToAttrXP(s ?? 0));
         const newAttrXP = {
           V: base(prev.attrXP?.V, prev.scores?.V) + (attrBonus?.V ?? 0),
           R: base(prev.attrXP?.R, prev.scores?.R) + (attrBonus?.R ?? 0),
           C: base(prev.attrXP?.C, prev.scores?.C) + (attrBonus?.C ?? 0),
           M: base(prev.attrXP?.M, prev.scores?.M) + (attrBonus?.M ?? 0),
         };
-        const newTotalXP = (prev.xp ?? 0) + xp;
-        const newTotalLevel = getTotalLevel(newTotalXP);
+        const newTotalXP = (newAttrXP.V ?? 0) + (newAttrXP.R ?? 0) + (newAttrXP.C ?? 0) + (newAttrXP.M ?? 0);
         return {
           ...prev,
           xp: newTotalXP,
-          level: newTotalLevel,
+          level: getTotalLevel(newTotalXP),
           coins: (prev.coins ?? 0) + coins,
           attrXP: newAttrXP,
           archetype: getArchetypeFromAttrXP(newAttrXP),
@@ -467,51 +473,62 @@ export default function App() {
 
       // Build prompt with user info and stats
       const userStats = {
-        level: results.level,
+        level: results.level ?? 1,
         xp: results.xp,
         attributes: {
-          V: getAttrLevel(results.attrXP?.V ?? (results.scores?.V ?? 0) * 5),
-          R: getAttrLevel(results.attrXP?.R ?? (results.scores?.R ?? 0) * 5),
-          C: getAttrLevel(results.attrXP?.C ?? (results.scores?.C ?? 0) * 5),
-          M: getAttrLevel(results.attrXP?.M ?? (results.scores?.M ?? 0) * 5),
+          V: getAttrLevel(results.attrXP?.V ?? trialScoreToAttrXP(results.scores?.V ?? 0)),
+          R: getAttrLevel(results.attrXP?.R ?? trialScoreToAttrXP(results.scores?.R ?? 0)),
+          C: getAttrLevel(results.attrXP?.C ?? trialScoreToAttrXP(results.scores?.C ?? 0)),
+          M: getAttrLevel(results.attrXP?.M ?? trialScoreToAttrXP(results.scores?.M ?? 0)),
         },
-        archetype: results.archetype.name,
+        archetype: results.archetype?.name ?? 'The Wayward Alchemist',
         description: userDescription || 'No description provided'
       };
 
-      const prompt = `Generate 3 personalized daily tasks for a user in a gamification app. 
+      // Hidden standard metric: 10 at account creation; +1 only when total level increases after that
+      const levelAtCreation = parseInt(localStorage.getItem('sh_initial_level'), 10) || userStats.level;
+      const standardMetric = 10 + Math.max(0, userStats.level - levelAtCreation);
 
-User Information:
-- Name: ${userName || 'User'}
-- Description: ${userStats.description}
-- Archetype: ${userStats.archetype}
-- Level: ${userStats.level}
-- Attributes: Physical Lv${userStats.attributes.V}, Mental Lv${userStats.attributes.R}, Social Lv${userStats.attributes.C}, Intelligent Lv${userStats.attributes.M}
+      const prompt = `You are the 'Architect', a High-Performance Productivity Coach and Behavioral Systems Architect.
+Your goal is to maximize human output and prevent burnout by balancing four key metrics:
+- Physical (Vitality - V)
+- Mental (Resilience - R)
+- Social (Connection - C)
+- Professional (Mastery - M)
 
-Generate 3 tasks that are:
-1. Personalized based on the user's description and archetype
-2. Appropriate for their current attribute levels
-3. Actionable and specific
-4. Varied in difficulty (mix of micro, standard, and challenge tasks)
+## THE ALGORITHM
+1. Analyze the User's Input Data.
+2. Calculate the 'Deficit Gap': Compare the user's current attribute levels against the 'Standard Metric' of ${standardMetric}.
+3. Identify the 'Critical Bottleneck': The attribute furthest below the Standard Metric.
+4. Generate 3 Tasks based on this analysis:
+   - Task 1 (Recovery/Maintenance): A Micro task addressing the Critical Bottleneck.
+   - Task 2 (Growth): A Standard task leveraging the user's strongest attribute.
+   - Task 3 (The Stretch): A Challenge task that combines two attributes (e.g., Physical + Mental).
 
-Return ONLY a JSON array of objects with this exact format:
-[
-  {
-    "title": "Short task title (max 50 characters)",
-    "description": "Detailed task description with steps and instructions",
-    "difficulty": "micro|standard|challenge",
-    "attrXP": {"V": 1} or {"R": 1} or {"C": 1} or {"M": 1} or combination of attributes
-  },
-  ...
-]
+## OUTPUT RULES
+- Tone: Direct, concise, imperative, and data-driven. No fluff.
+- Format: STRICT JSON Array. No markdown formatting, no conversation.
+- Keys: "title", "description", "difficulty", "attrXP".
+- attrXP: Must use keys "V", "R", "C", "M".
+  - Micro: 1-5 XP
+  - Standard: 5-15 XP
+  - Challenge: 15-40 XP
 
-Important:
-- "title" should be a concise, catchy title (max 50 chars) that summarizes the task
-- "description" should be the full detailed explanation with steps, context, and instructions
-- "difficulty" must be one of: "micro", "standard", or "challenge"
-- "attrXP" should be an object with attribute keys (V, R, C, M) and numeric values (1-5 for micro, 3-10 for standard, 8-25 for challenge)
+USER PROFILE:
+- Name: "${userName || 'Operative'}"
+- Description: "${userStats.description}"
+- Current Level: ${userStats.level}
+- Archetype: "${userStats.archetype}"
 
-Do not include any other text, only the JSON array.`;
+CURRENT METRICS (Input):
+- Physical (V): ${userStats.attributes.V}
+- Mental (R): ${userStats.attributes.R}
+- Social (C): ${userStats.attributes.C}
+- Professional (M): ${userStats.attributes.M}
+
+HIDDEN STANDARD METRIC: ${standardMetric}
+
+Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "description", "difficulty", "attrXP". No other text.`;
 
       // Use the correct Gemini API endpoint
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -558,7 +575,7 @@ Do not include any other text, only the JSON array.`;
         text: task.description || task.text || task.title || `Task ${index + 1}`,
         description: task.description || task.text || task.title || `Task ${index + 1}`,
         difficulty: task.difficulty || 'standard',
-        attrXP: task.attrXP || { V: 1 }
+        attrXP: getTaskAttrXPReward({ difficulty: task.difficulty || 'standard', attrXP: task.attrXP })
       }));
 
       setGeneratedTasks(formattedTasks);
@@ -570,8 +587,19 @@ Do not include any other text, only the JSON array.`;
     }
   };
 
+  // Hidden standard metric: 10 at account creation (any starting level); +1 only when total level increases after that
+  const currentLevel = results?.level ?? 1;
+  const levelAtCreation = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem('sh_initial_level'), 10) : null;
+  const initialLevel = levelAtCreation ?? currentLevel;
+  const standardMetric = results ? 10 + Math.max(0, currentLevel - initialLevel) : null;
+
   return (
     <div className="min-h-screen bg-blue-100 text-slate-800 font-sans selection:bg-amber-500/30 overflow-x-hidden" style={{ imageRendering: 'pixelated' }}>
+      {standardMetric != null && (
+        <div className="fixed top-4 right-4 z-50 px-3 py-1.5 bg-amber-900/90 text-amber-100 font-mono text-xs rounded border border-amber-700">
+          standardMetric: {standardMetric}
+        </div>
+      )}
       <AnimatePresence mode="wait">
         
         {/* 1. Welcome / Story */}
@@ -814,7 +842,17 @@ Do not include any other text, only the JSON array.`;
                 <h4 className="text-amber-50 font-mono text-xs font-bold uppercase">YOUR STATS</h4>
               </div>
               
-              {/* Stats Bars */}
+              {/* Total Level */}
+              <div className="bg-yellow-50 border-2 border-amber-900 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold text-amber-900 uppercase">Total Level</span>
+                  <span className="font-mono text-sm font-bold text-amber-900">Lv {results.level} — {(() => {
+                    const info = getTotalXPInLevel(results.xp ?? 0);
+                    return `${info.current}/${info.needed} XP`;
+                  })()}</span>
+                </div>
+              </div>
+              {/* Attribute Levels (Lv N, current/needed) */}
               <div className="space-y-3">
                 {[
                   { attr: 'V', name: 'Physical', icon: '💪', color: 'bg-red-500' },
@@ -822,9 +860,10 @@ Do not include any other text, only the JSON array.`;
                   { attr: 'C', name: 'Social', icon: '👥', color: 'bg-pink-500' },
                   { attr: 'M', name: 'Intelligent', icon: '📚', color: 'bg-green-500' }
                 ].map(({ attr, name, icon, color }) => {
-                  const score = results.scores?.[attr] ?? 0;
-                  const maxScore = 20; // 4 questions * 5 max points
-                  const percentage = (score / maxScore) * 100;
+                  const xp = results.attrXP?.[attr] ?? trialScoreToAttrXP(results.scores?.[attr] ?? 0);
+                  const level = getAttrLevel(xp);
+                  const xpInfo = getAttrXPInLevel(xp);
+                  const percentage = (xpInfo.needed > 0) ? (xpInfo.current / xpInfo.needed) * 100 : 0;
                   return (
                     <div key={attr} className="bg-yellow-50 border-2 border-amber-900 p-3" style={{ imageRendering: 'pixelated' }}>
                       <div className="flex items-center justify-between mb-2">
@@ -832,7 +871,7 @@ Do not include any other text, only the JSON array.`;
                           <span className="text-lg">{icon}</span>
                           <span className="font-mono text-xs font-bold text-amber-900 uppercase">{name}</span>
                         </div>
-                        <span className="font-mono text-xs font-bold text-amber-900">{score}</span>
+                        <span className="font-mono text-xs font-bold text-amber-900">Lv {level} — {xpInfo.current}/{xpInfo.needed} XP</span>
                       </div>
                       <div className="w-full h-4 bg-amber-900 border border-amber-950" style={{ imageRendering: 'pixelated' }}>
                         <div 
@@ -1278,7 +1317,7 @@ Do not include any other text, only the JSON array.`;
 
                       {/* Attributes */}
                       {['V', 'R', 'C', 'M'].map((attr, idx) => {
-                        const xp = results.attrXP?.[attr] ?? (results.scores?.[attr] ?? 0) * 5;
+                        const xp = results.attrXP?.[attr] ?? trialScoreToAttrXP(results.scores?.[attr] ?? 0);
                         const level = getAttrLevel(xp);
                         const xpInfo = getAttrXPInLevel(xp);
                         const icons = [
