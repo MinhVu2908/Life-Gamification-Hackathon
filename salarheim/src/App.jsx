@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw, RefreshCw, Coins, Zap, Check, CheckCircle2 } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Send, RefreshCw, Coins, Zap, Check, CheckCircle2, User, Edit2, LogOut, Save, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
 import { getTasksForBoard, getTaskRewards } from './easyTasks';
@@ -60,6 +60,22 @@ function getArchetypeFromAttrXP(attrXP) {
 const ATTR_NAMES = { V: 'Vitality', R: 'Resilience', C: 'Connection', M: 'Mastery' };
 const getQuestionsByAttr = (attr) => QUESTIONS.filter((q) => q.attr === attr);
 
+// Helper function to calculate enemy positions in a circle/spread pattern
+const getEnemyPosition = (index, total) => {
+  if (total === 0) return { x: 50, y: 50 };
+  
+  // Spread enemies in a semi-circle pattern
+  const angle = (index / total) * Math.PI * 1.5 + Math.PI * 0.25; // Start from top-left, go clockwise
+  const radius = 35; // Distance from center
+  const centerX = 70;
+  const centerY = 40;
+  
+  return {
+    x: centerX + Math.cos(angle) * radius,
+    y: centerY + Math.sin(angle) * radius
+  };
+};
+
 export default function App() {
   // Load saved state if it exists
   const [step, setStep] = useState(() => {
@@ -75,6 +91,7 @@ export default function App() {
   const [trialAttr, setTrialAttr] = useState(null); // V|R|C|M when in trial-questions
   const [results, setResults] = useState(() => JSON.parse(localStorage.getItem('sh_results')) || null);
   const [mapView, setMapView] = useState(false);
+  const [profileView, setProfileView] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [questFlowStep, setQuestFlowStep] = useState(null); // 'confirm' | 'availability' | 'in-progress' | 'complete'
@@ -83,12 +100,52 @@ export default function App() {
   const [completedQuestIds, setCompletedQuestIds] = useState(() => JSON.parse(localStorage.getItem('sh_completed_quests')) || []);
   const [taskBoardKey, setTaskBoardKey] = useState(0);
   const [mapQuestKey, setMapQuestKey] = useState(0); // reshuffle positions when entering map
+  const [userName, setUserName] = useState(() => localStorage.getItem('sh_user_name') || '');
+  const [userDescription, setUserDescription] = useState(() => localStorage.getItem('sh_user_description') || '');
+  const [editingName, setEditingName] = useState(false);
+  const [editingDescription, setEditingDescription] = useState(false);
+  const [tempName, setTempName] = useState('');
+  const [tempDescription, setTempDescription] = useState('');
+  const [defeatedEnemies, setDefeatedEnemies] = useState(() => JSON.parse(localStorage.getItem('sh_defeated_enemies')) || []);
+  const [attackingEnemy, setAttackingEnemy] = useState(null);
+  const [userPosition, setUserPosition] = useState({ x: 20, y: 70 }); // Starting position in percentage (bottom left)
 
-  // Board tasks (4 random, excluding completed)
-  const boardTasks = useMemo(
-    () => getTasksForBoard(completedTaskIds, 4),
-    [completedTaskIds, taskBoardKey]
-  );
+  // Board tasks - fixed set that doesn't regenerate after completion
+  const [fixedBoardTasks, setFixedBoardTasks] = useState(() => {
+    const saved = localStorage.getItem('sh_fixed_board_tasks');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        // Invalid JSON, will generate new
+      }
+    }
+    return [];
+  });
+
+  // Initialize fixed board tasks on first load if not set
+  useEffect(() => {
+    if (fixedBoardTasks.length === 0 && results) {
+      const initialCompleted = JSON.parse(localStorage.getItem('sh_completed_tasks')) || [];
+      const initialTasks = getTasksForBoard(initialCompleted, 5);
+      if (initialTasks.length > 0) {
+        setFixedBoardTasks(initialTasks);
+        localStorage.setItem('sh_fixed_board_tasks', JSON.stringify(initialTasks));
+      }
+    }
+  }, [results]);
+
+  // Save fixed board tasks to localStorage
+  useEffect(() => {
+    if (fixedBoardTasks.length > 0) {
+      localStorage.setItem('sh_fixed_board_tasks', JSON.stringify(fixedBoardTasks));
+    }
+  }, [fixedBoardTasks]);
+
+  const boardTasks = fixedBoardTasks;
 
   // Non-overlapping positions for quest circles (shuffled when entering map or completing quest)
   const QUEST_SLOTS = [
@@ -108,7 +165,20 @@ export default function App() {
     if (results) localStorage.setItem('sh_results', JSON.stringify(results));
     localStorage.setItem('sh_completed_tasks', JSON.stringify(completedTaskIds));
     localStorage.setItem('sh_completed_quests', JSON.stringify(completedQuestIds));
-  }, [step, results, completedTaskIds, completedQuestIds]);
+    localStorage.setItem('sh_user_name', userName);
+    localStorage.setItem('sh_user_description', userDescription);
+    localStorage.setItem('sh_defeated_enemies', JSON.stringify(defeatedEnemies));
+  }, [step, results, completedTaskIds, completedQuestIds, userName, userDescription, defeatedEnemies]);
+
+  // Sync defeated enemies with completed tasks when board tasks change
+  useEffect(() => {
+    if (boardTasks.length > 0) {
+      const currentDefeated = defeatedEnemies.filter(idx => idx < boardTasks.length);
+      if (currentDefeated.length !== defeatedEnemies.length) {
+        setDefeatedEnemies(currentDefeated);
+      }
+    }
+  }, [boardTasks.length]);
 
   const handleAnswer = (val) => {
     const qs = getQuestionsByAttr(trialAttr);
@@ -172,35 +242,89 @@ export default function App() {
     setQuestFlowStep(null);
     setCompletedTaskIds([]);
     setCompletedQuestIds([]);
+    setUserName('');
+    setUserDescription('');
+    setDefeatedEnemies([]);
+    setAttackingEnemy(null);
+    setUserPosition({ x: 20, y: 70 });
+    setFixedBoardTasks([]);
+    setProfileView(false);
+    setMapView(false);
     localStorage.removeItem('sh_step');
     localStorage.removeItem('sh_results');
     localStorage.removeItem('sh_completed_tasks');
     localStorage.removeItem('sh_completed_quests');
+    localStorage.removeItem('sh_user_name');
+    localStorage.removeItem('sh_user_description');
+    localStorage.removeItem('sh_defeated_enemies');
+    localStorage.removeItem('sh_fixed_board_tasks');
+  };
+
+  const handleEditName = () => {
+    setTempName(userName);
+    setEditingName(true);
+  };
+
+  const handleSaveName = () => {
+    setUserName(tempName);
+    setEditingName(false);
+  };
+
+  const handleCancelEditName = () => {
+    setEditingName(false);
+    setTempName('');
+  };
+
+  const handleEditDescription = () => {
+    setTempDescription(userDescription);
+    setEditingDescription(true);
+  };
+
+  const handleSaveDescription = () => {
+    setUserDescription(tempDescription);
+    setEditingDescription(false);
+  };
+
+  const handleCancelEditDescription = () => {
+    setEditingDescription(false);
+    setTempDescription('');
   };
 
   const handleTaskComplete = (task) => {
     if (!results) return;
-    const { xp, coins } = getTaskRewards(task);
-    const attrBonus = task.attrXP ?? {};
-    setResults((prev) => {
-      const base = (v, s) => (v ?? (s ?? 0) * 5);
-      const newAttrXP = {
-        V: Math.min(ATTR_MAX, base(prev.attrXP?.V, prev.scores?.V) + (attrBonus.V ?? 0)),
-        R: Math.min(ATTR_MAX, base(prev.attrXP?.R, prev.scores?.R) + (attrBonus.R ?? 0)),
-        C: Math.min(ATTR_MAX, base(prev.attrXP?.C, prev.scores?.C) + (attrBonus.C ?? 0)),
-        M: Math.min(ATTR_MAX, base(prev.attrXP?.M, prev.scores?.M) + (attrBonus.M ?? 0)),
-      };
-      return {
-        ...prev,
-        xp: (prev.xp ?? 0) + xp,
-        coins: (prev.coins ?? 0) + coins,
-        attrXP: newAttrXP,
-        archetype: getArchetypeFromAttrXP(newAttrXP),
-        primaryNeed: Object.keys(newAttrXP).reduce((a, b) => newAttrXP[a] < newAttrXP[b] ? a : b),
-      };
-    });
-    setCompletedTaskIds((prev) => [...prev, task.id]);
-    setTaskBoardKey((k) => k + 1);
+    
+    // Find the task index to determine which enemy to attack
+    const taskIndex = boardTasks.findIndex(t => t.id === task.id);
+    if (taskIndex === -1) return;
+    
+    // Trigger attack animation
+    setAttackingEnemy(taskIndex);
+    
+    // After animation completes, update state
+    setTimeout(() => {
+      const { xp, coins } = getTaskRewards(task);
+      const attrBonus = task.attrXP ?? {};
+      setResults((prev) => {
+        const base = (v, s) => (v ?? (s ?? 0) * 5);
+        const newAttrXP = {
+          V: Math.min(ATTR_MAX, base(prev.attrXP?.V, prev.scores?.V) + (attrBonus.V ?? 0)),
+          R: Math.min(ATTR_MAX, base(prev.attrXP?.R, prev.scores?.R) + (attrBonus.R ?? 0)),
+          C: Math.min(ATTR_MAX, base(prev.attrXP?.C, prev.scores?.C) + (attrBonus.C ?? 0)),
+          M: Math.min(ATTR_MAX, base(prev.attrXP?.M, prev.scores?.M) + (attrBonus.M ?? 0)),
+        };
+        return {
+          ...prev,
+          xp: (prev.xp ?? 0) + xp,
+          coins: (prev.coins ?? 0) + coins,
+          attrXP: newAttrXP,
+          archetype: getArchetypeFromAttrXP(newAttrXP),
+          primaryNeed: Object.keys(newAttrXP).reduce((a, b) => newAttrXP[a] < newAttrXP[b] ? a : b),
+        };
+      });
+      setCompletedTaskIds((prev) => [...prev, task.id]);
+      setDefeatedEnemies((prev) => [...prev, taskIndex]);
+      setAttackingEnemy(null);
+    }, 1500); // Animation duration
   };
 
   const handleQuestClick = (quest) => {
@@ -406,16 +530,138 @@ export default function App() {
         {step === 'dashboard' && results && (
           <motion.div key="dash" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen flex flex-col pb-20">
             <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full relative">
-              <button
-                onClick={resetProfile}
-                className="absolute top-4 right-4 md:top-6 md:right-6 p-2 rounded-lg text-slate-500 hover:text-amber-500 hover:bg-amber-500/10 transition-colors z-10"
-                title="Reset profile"
-              >
-                <RotateCcw size={18} />
-              </button>
+              {/* Profile view */}
+              {profileView ? (
+                <div className="min-h-[60vh] space-y-6 pb-6">
+                  {/* Header with gradient background */}
+                  <div className="relative -mx-4 -mt-4 md:-mx-6 md:-mt-6 px-4 pt-4 md:px-6 md:pt-6 pb-8 rounded-b-3xl overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-600/30 via-pink-500/30 to-purple-600/30"></div>
+                    <div className="relative flex items-center justify-between mb-6">
+                      <div className="w-8 h-8 flex items-center justify-center">
+                        <Zap size={20} className="text-amber-500" />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-serif text-slate-200 mb-1">Profile</div>
+                        <div className="flex justify-center gap-1">
+                          <div className="w-1 h-1 rounded-full bg-amber-500/60"></div>
+                          <div className="w-1 h-1 rounded-full bg-slate-500/40"></div>
+                          <div className="w-1 h-1 rounded-full bg-slate-500/40"></div>
+                        </div>
+                      </div>
+                      <div className="w-8 h-8 flex items-center justify-center">
+                      </div>
+                    </div>
+                    
+                    {/* Profile Picture and Info */}
+                    <div className="relative flex flex-col items-center">
+                      <div className="w-24 h-24 relative mb-3">
+                        {/* Hexagonal-like shape using clip-path */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/40 via-purple-500/30 to-pink-500/40" 
+                             style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}></div>
+                        <div className="absolute inset-1 bg-salar-card flex items-center justify-center"
+                             style={{ clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)' }}>
+                          <span className="text-amber-500 font-serif text-3xl">
+                            {userName ? userName.charAt(0).toUpperCase() : (results.archetype.name.charAt(4) || 'S')}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        {editingName ? (
+                          <div className="flex items-center gap-2 justify-center mb-1">
+                            <input
+                              type="text"
+                              value={tempName}
+                              onChange={(e) => setTempName(e.target.value)}
+                              className="bg-salar-card border border-amber-500/30 rounded-lg px-3 py-1 text-slate-200 font-serif text-xl text-center focus:outline-none focus:border-amber-500/60"
+                              placeholder="Enter your name"
+                              autoFocus
+                            />
+                            <button
+                              onClick={handleSaveName}
+                              className="p-1.5 rounded-lg bg-amber-500/20 text-amber-500 hover:bg-amber-500/30 transition-colors"
+                            >
+                              <Save size={16} />
+                            </button>
+                            <button
+                              onClick={handleCancelEditName}
+                              className="p-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-700/70 transition-colors"
+                            >
+                              <ChevronLeft size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 justify-center mb-1">
+                            <h2 className="font-serif text-2xl font-bold text-slate-100">
+                              {userName || 'Sálarheim'}
+                            </h2>
+                            <button
+                              onClick={handleEditName}
+                              className="p-1 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Maps view: 4 attribute locations + quest circles */}
-              {mapView ? (
+                  {/* Description Section */}
+                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-serif text-lg font-bold text-slate-200">About Me</h3>
+                      {!editingDescription && (
+                        <button
+                          onClick={handleEditDescription}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-colors"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                    {editingDescription ? (
+                      <div className="space-y-3">
+                        <textarea
+                          value={tempDescription}
+                          onChange={(e) => setTempDescription(e.target.value)}
+                          className="w-full bg-white/5 border border-amber-500/30 rounded-lg px-3 py-2 text-slate-200 text-sm focus:outline-none focus:border-amber-500/60 resize-none"
+                          placeholder="Write a description about yourself... (This will be used for generating personalized tasks)"
+                          rows={4}
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button
+                            onClick={handleCancelEditDescription}
+                            className="px-3 py-1.5 rounded-lg bg-slate-700/50 text-slate-400 hover:bg-slate-700/70 transition-colors text-sm"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleSaveDescription}
+                            className="px-3 py-1.5 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-500 hover:bg-amber-500/30 transition-colors text-sm flex items-center gap-1"
+                          >
+                            <Save size={14} /> Save
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-400 leading-relaxed">
+                        {userDescription || 'No description yet. Click the edit button to add one.'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Logout Button */}
+                  <div className="pt-4">
+                    <button
+                      onClick={resetProfile}
+                      className="w-full py-3 px-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:border-red-500/50 transition-colors flex items-center justify-center gap-2 font-medium"
+                    >
+                      <LogOut size={18} />
+                      Log Out (Reset for Demo)
+                    </button>
+                  </div>
+                </div>
+              ) : mapView ? (
                 <div className="min-h-[60vh]">
                   {selectedLocation ? (
                     <>
@@ -603,88 +849,233 @@ export default function App() {
                 </div>
               ) : (
                 <>
-              {/* Two-column layout: Left (profile, prompt, scan) | Right (welcome, task board) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Left column: Profile, AI prompt, Scan camera */}
-                <div className="space-y-4">
-                  {/* Profile - top left */}
-                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5 flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-                      <span className="text-amber-500 font-serif text-xl">S</span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-serif text-amber-500 uppercase tracking-wider text-sm">{results.archetype.name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">Level {results.level}</div>
-                      <div className="text-xs text-slate-400 mt-0.5">Exp: {results.xp}</div>
-                      <div className="text-xs text-slate-400">Coins: {results.coins ?? 0}</div>
-                      <div className="text-xs text-slate-400">
-                      {['V','R','C','M'].map((a) => {
-                        const xp = results.attrXP?.[a] ?? (results.scores?.[a] ?? 0) * 5;
-                        return `${a}:Lv${getAttrLevel(xp)}(${xp})`;
-                      }).join(' ')}
-                    </div>
-                    </div>
-                  </div>
-
-                  {/* AI prompt */}
-                  <div className="p-3 bg-salar-card rounded-xl border border-white/5">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Write prompt..."
-                        className="flex-1 bg-transparent border-none outline-none text-slate-300 placeholder:text-slate-600 text-sm"
-                        readOnly
-                      />
-                      <button className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" disabled>
-                        <Send size={18} />
+              {/* Pixel-art style dashboard */}
+              <div className="space-y-4">
+                {/* Main Profile and Stats Section */}
+                <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Character Avatar (Left) */}
+                    <div className="flex flex-col items-center">
+                      <div className="w-24 h-24 bg-blue-400/20 border-4 border-amber-900/40 mb-2 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                        <div className="w-16 h-16 bg-amber-500/30 border-2 border-amber-900/50 flex items-center justify-center" style={{ imageRendering: 'pixelated' }}>
+                          <span className="text-amber-500 font-serif text-3xl font-bold">
+                            {userName ? userName.charAt(0).toUpperCase() : (results.archetype.name.charAt(4) || 'S')}
+                          </span>
+                        </div>
+                      </div>
+                      <button className="w-full py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs mb-2 hover:bg-amber-500/30 transition-colors" style={{ imageRendering: 'pixelated' }}>
+                        CLICK ME
                       </button>
+                      <div className="w-full py-2 bg-amber-500/20 border-2 border-amber-900/50 text-amber-500 font-bold text-xs" style={{ imageRendering: 'pixelated' }}>
+                        {results.archetype.name.toUpperCase()}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Scan camera */}
-                  <div className="aspect-[4/3] max-w-full bg-salar-card rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500">
-                    <Camera size={40} className="mb-2 opacity-50" />
-                    <span className="text-sm">Capture Picture</span>
+                    {/* Game Statistics (Right) */}
+                    <div className="md:col-span-2 grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {/* LEVEL */}
+                      <div className="bg-salar-card border-2 border-amber-900/40 p-3" style={{ imageRendering: 'pixelated' }}>
+                        <div className="text-xs font-bold text-amber-500/80 mb-1">LEVEL</div>
+                        <div className="text-2xl font-bold text-amber-500">{results.level}</div>
+                      </div>
+
+                      {/* GOLD */}
+                      <div className="bg-salar-card border-2 border-amber-900/40 p-3" style={{ imageRendering: 'pixelated' }}>
+                        <div className="text-xs font-bold text-amber-500/80 mb-1">GOLD</div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-2xl font-bold text-amber-500">{results.coins ?? 0}</span>
+                          <Coins size={16} className="text-amber-500" />
+                        </div>
+                      </div>
+
+                      {/* EXPERIENCE */}
+                      <div className="bg-salar-card border-2 border-amber-900/40 p-3 md:col-span-1 col-span-2" style={{ imageRendering: 'pixelated' }}>
+                        <div className="text-xs font-bold text-amber-500/80 mb-1">EXPERIENCE</div>
+                        <div className="text-sm text-amber-500 mb-1">{results.xp} XP</div>
+                        <div className="w-full h-3 bg-amber-900/30 border border-amber-900/50 mb-1" style={{ imageRendering: 'pixelated' }}>
+                          <div 
+                            className="h-full bg-amber-500 border-r border-amber-900/50"
+                            style={{ 
+                              width: `${Math.min(100, ((results.xp % 1000) / 1000) * 100)}%`,
+                              imageRendering: 'pixelated'
+                            }}
+                          ></div>
+                        </div>
+                        <div className="text-xs text-slate-400">{1000 - (results.xp % 1000)} XP to next level</div>
+                      </div>
+
+                      {/* Attributes */}
+                      {['V', 'R', 'C', 'M'].map((attr, idx) => {
+                        const xp = results.attrXP?.[attr] ?? (results.scores?.[attr] ?? 0) * 5;
+                        const icons = [
+                          <Zap key="v" size={14} className="text-yellow-500" />,
+                          <Sparkles key="r" size={14} className="text-pink-500" />,
+                          <User key="c" size={14} className="text-blue-500" />,
+                          <Zap key="m" size={14} className="text-green-500" />
+                        ];
+                        const names = ['Physical', 'Mental', 'Social', 'Intelligent'];
+                        return (
+                          <div key={attr} className="bg-salar-card border-2 border-amber-900/40 p-2" style={{ imageRendering: 'pixelated' }}>
+                            <div className="flex items-center gap-1 mb-1">
+                              {icons[idx]}
+                              <span className="text-xs font-bold text-amber-500/80">{names[idx]}</span>
+                            </div>
+                            <div className="text-lg font-bold text-amber-500">{xp}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 
-                {/* Right column: Welcome prompt, Task board */}
-                <div className="space-y-4">
-                  {/* Welcome prompt - top right */}
-                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Welcome</div>
-                    <p className="font-serif italic text-slate-300 text-sm">"{results.archetype.desc}"</p>
+                {/* Daily Wisdom Section */}
+                <div className="p-4 bg-purple-900/20 border-4 border-purple-900/40" style={{ imageRendering: 'pixelated' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles size={16} className="text-yellow-500" />
+                    <h3 className="text-sm font-bold text-purple-300 uppercase">Daily Wisdom</h3>
                   </div>
+                  <p className="text-slate-200 italic text-sm">"{results.archetype.desc}"</p>
+                </div>
 
-                  {/* Task board - below welcome */}
-                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Dashboard — Quick Tasks</div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {boardTasks.map((task) => {
-                        const { xp, coins } = getTaskRewards(task);
-                        return (
+                {/* Game Screen - Battle Area */}
+                <div className="p-4 bg-green-600/20 border-4 border-green-900/40 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px' }}>
+                  <div className="relative w-full h-full" style={{ minHeight: '250px' }}>
+                    {/* User Character */}
+                    {(() => {
+                      const displayedTasksCount = Math.min(5, boardTasks.length);
+                      const enemyPos = attackingEnemy !== null 
+                        ? getEnemyPosition(attackingEnemy, displayedTasksCount)
+                        : null;
+                      
+                      return (
+                        <motion.div
+                          className="absolute w-12 h-12 rounded-full bg-blue-500 border-4 border-blue-900 flex items-center justify-center z-20"
+                          style={{ 
+                            imageRendering: 'pixelated'
+                          }}
+                          animate={
+                            attackingEnemy !== null && enemyPos
+                              ? {
+                                  left: [`${userPosition.x}%`, `${enemyPos.x}%`, `${enemyPos.x}%`, `${userPosition.x}%`],
+                                  top: [`${userPosition.y}%`, `${enemyPos.y}%`, `${enemyPos.y}%`, `${userPosition.y}%`],
+                                  scale: [1, 1.2, 1.2, 1],
+                                  x: ['-50%', '-50%', '-50%', '-50%'],
+                                  y: ['-50%', '-50%', '-50%', '-50%']
+                                }
+                              : {
+                                  left: `${userPosition.x}%`,
+                                  top: `${userPosition.y}%`,
+                                  x: '-50%',
+                                  y: '-50%',
+                                  scale: 1
+                                }
+                          }
+                          transition={{
+                            duration: 1.5,
+                            times: [0, 0.4, 0.6, 1],
+                            ease: "easeInOut"
+                          }}
+                        >
+                          <span className="text-white font-bold text-lg">YOU</span>
+                        </motion.div>
+                      );
+                    })()}
+
+                    {/* Enemies */}
+                    {boardTasks.slice(0, 5).map((task, index) => {
+                      const displayedTasksCount = Math.min(5, boardTasks.length);
+                      const enemyPos = getEnemyPosition(index, displayedTasksCount);
+                      const isDefeated = defeatedEnemies.includes(index);
+                      const isBeingAttacked = attackingEnemy === index;
+                      
+                      // Don't render defeated enemies
+                      if (isDefeated && !isBeingAttacked) {
+                        return null;
+                      }
+                      
+                      return (
+                        <motion.div
+                          key={task.id}
+                          className="absolute w-10 h-10 rounded-full border-4 border-red-900 bg-red-500 flex items-center justify-center z-10"
+                          style={{
+                            left: `${enemyPos.x}%`,
+                            top: `${enemyPos.y}%`,
+                            transform: 'translate(-50%, -50%)',
+                            imageRendering: 'pixelated'
+                          }}
+                          animate={
+                            isBeingAttacked
+                              ? {
+                                  scale: [1, 1.3, 0],
+                                  opacity: [1, 1, 0]
+                                }
+                              : {}
+                          }
+                          transition={{
+                            duration: 1.5,
+                            times: [0, 0.5, 1],
+                            ease: "easeInOut"
+                          }}
+                        >
+                          <span className="text-white font-bold text-xs">EN</span>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Daily Quests Section */}
+                <div className="p-4 bg-amber-50/5 border-4 border-amber-900/30" style={{ imageRendering: 'pixelated' }}>
+                  <div className="bg-blue-600/40 border-2 border-blue-900/50 p-2 mb-3" style={{ imageRendering: 'pixelated' }}>
+                    <h3 className="text-sm font-bold text-white uppercase">Daily Quests</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {boardTasks.slice(0, 5).map((task) => {
+                      const { xp, coins } = getTaskRewards(task);
+                      const isCompleted = completedTaskIds.includes(task.id);
+                      const attrIcons = {
+                        'V': <Zap size={14} className="text-yellow-500" />,
+                        'R': <Sparkles size={14} className="text-pink-500" />,
+                        'C': <User size={14} className="text-blue-500" />,
+                        'M': <Zap size={14} className="text-green-500" />
+                      };
+                      const taskAttr = Object.keys(task.attrXP || {})[0];
+                      return (
                         <div
                           key={task.id}
-                          className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:border-amber-500/20 transition-colors"
+                          className={`bg-amber-50/5 border-2 p-2 flex items-center justify-between transition-colors ${
+                            isCompleted 
+                              ? 'border-gray-600/40 opacity-50' 
+                              : 'border-amber-900/40 hover:bg-amber-500/10'
+                          }`}
+                          style={{ imageRendering: 'pixelated' }}
                         >
-                          <button
-                            onClick={() => handleTaskComplete(task)}
-                            className="w-8 h-8 shrink-0 rounded-full border-2 border-amber-500/40 flex items-center justify-center text-amber-500 hover:bg-amber-500/20 hover:border-amber-500/60 transition-all"
-                            title={`Complete: +${xp} XP, +${coins} coins`}
-                          >
-                            <Check size={16} />
-                          </button>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-slate-200">{task.text}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              +{xp} XP · +{coins} coins {Object.keys(task.attrXP || {}).length ? `· +${Object.entries(task.attrXP).map(([a,v]) => `${v}${a}`).join(' ')}` : ''}
-                            </p>
+                          <div className="flex items-center gap-2 flex-1">
+                            {taskAttr && attrIcons[taskAttr]}
+                            <span className={`text-sm flex-1 ${isCompleted ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
+                              {task.text}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold ${isCompleted ? 'text-gray-500' : 'text-amber-500'}`}>
+                              {isCompleted ? '✓' : `+${xp}`}
+                            </span>
+                            {!isCompleted && (
+                              <button
+                                onClick={() => handleTaskComplete(task)}
+                                className="w-6 h-6 border-2 border-amber-500/50 bg-amber-500/10 flex items-center justify-center hover:bg-amber-500/30 transition-colors"
+                                title={`Complete: +${xp} XP, +${coins} coins`}
+                                style={{ imageRendering: 'pixelated' }}
+                              >
+                                <Check size={12} className="text-amber-500" />
+                              </button>
+                            )}
                           </div>
                         </div>
-                      );})}
-                    </div>
+                      );
+                    })}
                     {boardTasks.length === 0 && (
-                      <p className="text-sm text-slate-500 italic">All tasks done for now. Great work!</p>
+                      <p className="text-sm text-slate-500 italic text-center py-2">All quests completed! Great work!</p>
                     )}
                   </div>
                 </div>
@@ -695,19 +1086,23 @@ export default function App() {
 
             {/* Bottom nav bar */}
             <nav className="fixed bottom-0 left-0 right-0 h-16 bg-salar-card border-t border-white/5 flex items-center justify-around px-4">
-              <button className="p-2 rounded-lg text-slate-500 opacity-50 cursor-not-allowed" disabled title="Coming soon">
-                <Lock size={22} />
+              <button
+                onClick={() => { setProfileView(true); setMapView(false); setSelectedLocation(null); }}
+                className={`p-2 rounded-lg transition-colors ${profileView ? 'text-amber-500 bg-amber-500/10' : 'text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10'}`}
+                title="Profile"
+              >
+                <User size={24} />
               </button>
               <button
-                onClick={() => { setMapView(true); setSelectedLocation(null); }}
+                onClick={() => { setMapView(true); setProfileView(false); setSelectedLocation(null); }}
                 className={`p-2 rounded-lg transition-colors ${mapView ? 'text-amber-500 bg-amber-500/10' : 'text-amber-500/80 hover:text-amber-500 hover:bg-amber-500/10'}`}
                 title="Maps"
               >
                 <MapPin size={24} />
               </button>
               <button
-                onClick={() => { setMapView(false); setSelectedLocation(null); }}
-                className={`p-3 rounded-full transition-colors ${!mapView ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'text-slate-400 hover:text-amber-500 hover:bg-white/5 border border-white/5'}`}
+                onClick={() => { setMapView(false); setProfileView(false); setSelectedLocation(null); }}
+                className={`p-3 rounded-full transition-colors ${!mapView && !profileView ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' : 'text-slate-400 hover:text-amber-500 hover:bg-white/5 border border-white/5'}`}
                 title="Home"
               >
                 <Home size={24} />

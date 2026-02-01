@@ -17,3 +17,10 @@ body {
   color: #e2e8f0; /* slate-200 */
   font-family: var(--font-sans);
 }
+
+/* Pixel-art styling */
+[style*="imageRendering: 'pixelated'"] {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
