@@ -1159,33 +1159,52 @@ Do not include any other text, only the JSON array.`;
                       )}
                     </>
                   ) : (
-                    <div className="relative w-full aspect-[4/3] max-w-xl mx-auto bg-salar-card rounded-2xl border border-white/5 overflow-hidden">
-                      {/* 4 attribute location circles at different spots */}
+                    <div className="relative w-full max-w-4xl mx-auto border-4 border-amber-900 overflow-hidden" style={{ imageRendering: 'pixelated' }}>
+                      {/* Map Image */}
+                      <img 
+                        src="/images/Maps.png" 
+                        alt="Sálarheim Map" 
+                        className="w-full h-auto"
+                        style={{ imageRendering: 'pixelated' }}
+                      />
+                      
+                      {/* 4 attribute location buttons positioned on their respective regions */}
+                      {/* V - Vitality Woods (Top-Left: village in the woods) */}
                       <button
                         onClick={() => setSelectedLocation('V')}
-                        className="absolute top-[12%] left-[18%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
-                        title="Vitality"
+                        className="absolute top-[20%] left-[20%] w-14 h-14 bg-red-500 border-4 border-amber-900 flex items-center justify-center font-mono font-bold text-white text-lg hover:bg-red-600 z-20"
+                        style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
+                        title="Vitality Woods"
                       >
                         V
                       </button>
+                      
+                      {/* R - Resilience Peaks (Top-Right: castle in the mountains) */}
                       <button
                         onClick={() => setSelectedLocation('R')}
-                        className="absolute top-[15%] right-[22%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
-                        title="Resilience"
+                        className="absolute top-[15%] right-[20%] w-14 h-14 bg-blue-500 border-4 border-amber-900 flex items-center justify-center font-mono font-bold text-white text-lg hover:bg-blue-600 z-20"
+                        style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
+                        title="Resilience Peaks"
                       >
                         R
                       </button>
+                      
+                      {/* C - Connection Harbor (Bottom-Left: harbor town with lighthouse) */}
                       <button
                         onClick={() => setSelectedLocation('C')}
-                        className="absolute bottom-[18%] left-[25%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
-                        title="Connection"
+                        className="absolute bottom-[25%] left-[15%] w-14 h-14 bg-pink-500 border-4 border-amber-900 flex items-center justify-center font-mono font-bold text-white text-lg hover:bg-pink-600 z-20"
+                        style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
+                        title="Connection Harbor"
                       >
                         C
                       </button>
+                      
+                      {/* M - Mastery Sands (Bottom-Right: desert with pyramids and oasis) */}
                       <button
                         onClick={() => setSelectedLocation('M')}
-                        className="absolute bottom-[12%] right-[20%] w-14 h-14 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center font-serif font-bold text-amber-500 text-lg hover:scale-110 hover:bg-amber-500/30 transition-transform"
-                        title="Mastery"
+                        className="absolute bottom-[25%] right-[20%] w-14 h-14 bg-green-500 border-4 border-amber-900 flex items-center justify-center font-mono font-bold text-white text-lg hover:bg-green-600 z-20"
+                        style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
+                        title="Mastery Sands"
                       >
                         M
                       </button>
