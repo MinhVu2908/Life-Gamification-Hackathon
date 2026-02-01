@@ -2,46 +2,59 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw, RefreshCw, Coins, Zap, Check, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
-import { getTasksForBoard } from './easyTasks';
+import { getTasksForBoard, getTaskRewards } from './easyTasks';
 
-// --- Research Data ---
+// --- Research Data --- (4 questions per attribute, 16 total)
 const QUESTIONS = [
   // V - Vitality (Physical Energy & Health)
   { id: 1, attr: 'V', text: "I consistently wake up feeling genuinely well-rested and energized." },
   { id: 2, attr: 'V', text: "I incorporate physical movement that leaves me feeling stronger." },
   { id: 3, attr: 'V', text: "My eating habits support sustained energy without crashes." },
   { id: 4, attr: 'V', text: "After my main meal, I feel energized, not heavy or sluggish." },
-  { id: 14, attr: 'V', text: "I maintain consistent hydration throughout my day." },
 
   // R - Resilience (Emotional Regulation & Focus)
   { id: 5, attr: 'R', text: "I prioritize careful planning over jumping straight into action." },
   { id: 6, attr: 'R', text: "I recover emotional balance within an hour of a setback." },
   { id: 7, attr: 'R', text: "I proactively plan my schedule rather than reacting to demands." },
   { id: 8, attr: 'R', text: "I can enter deep concentration without seeking distraction." },
-  { id: 15, attr: 'R', text: "I can remain calm and clear-headed under tight deadlines." },
 
   // C - Connection (Social & Boundaries)
   { id: 9, attr: 'C', text: "I have at least two people I can unconditionally rely on." },
   { id: 10, attr: 'C', text: "I am satisfied with the quality of my social interactions." },
   { id: 11, attr: 'C', text: "I find it easy to say 'no' to demands when I need space." },
-  { id: 16, attr: 'C', text: "I regularly contribute to the well-being of others in my circle." },
-  { id: 17, attr: 'C', text: "I feel understood and respected by the people I spend time with." },
+  { id: 12, attr: 'C', text: "I regularly contribute to the well-being of others in my circle." },
 
   // M - Mastery (Competence & Finance)
-  { id: 12, attr: 'M', text: "I am actively practicing skills to improve my career or goals." },
-  { id: 13, attr: 'M', text: "I have a strong grasp and control over my financial situation." },
-  { id: 18, attr: 'M', text: "I complete my most important tasks before moving to low-value work." },
-  { id: 19, attr: 'M', text: "I have a clear 3-month goal that I am currently working toward." },
-  { id: 20, attr: 'M', text: "I feel competent and capable in my primary field of work." }
+  { id: 13, attr: 'M', text: "I am actively practicing skills to improve my career or goals." },
+  { id: 14, attr: 'M', text: "I have a strong grasp and control over my financial situation." },
+  { id: 15, attr: 'M', text: "I complete my most important tasks before moving to low-value work." },
+  { id: 16, attr: 'M', text: "I have a clear 3-month goal that I am currently working toward." }
 ];
 
+// 16 Archetypes: score < 10 = L, else H (order: V, R, C, M)
 const ARCHETYPES = {
   'HHHH': { name: 'The True Sovereign', desc: 'Perfect Balance. Tier 2 Master.' },
   'LLLL': { name: 'The Broken Vassal', desc: 'Critical deficit in all Pillars. Seek restoration.' },
-  'LHLH': { name: 'The Ascetic Crafter', desc: 'High drive, but sacrificing recovery and social fuel.' },
+  'LHHH': { name: 'The Frail Archon', desc: 'Strong mental/social/skills, but lacks physical fuel.' },
+  'HLHH': { name: 'The Resilient Sage', desc: 'Strong vitality, mind, connection; may lack practical mastery.' },
+  'HHLL': { name: 'The Vigorous Wanderer', desc: 'High energy and resilience; lacking connection and mastery.' },
+  'HHLH': { name: 'The Vigilant Bastion', desc: 'High self-sufficiency, but isolated and lacking connection.' },
+  'HHHL': { name: 'The Charismatic Forge', desc: 'Strong vitality, resilience, connection; lacks practical mastery.' },
+  'LHHL': { name: 'The Cloistered Oracle', desc: 'Disciplined and connected, but lacking physical fuel.' },
+  'LHLH': { name: 'The Ascetic Crafter', desc: 'High drive/skill, sacrifices recovery/social life.' },
   'HLLH': { name: 'The Unruly Freeblade', desc: 'High energy and skills, but lacking structure.' },
-  'LHHL': { name: 'The Cloistered Oracle', desc: 'Disciplined and connected, but lacking physical fuel.' }
+  'LHLL': { name: 'The Stark Monk', desc: 'Only possesses mental discipline; deficits elsewhere.' },
+  'LLHL': { name: 'The Grieving Shepherd', desc: 'Only possesses social grace; deficits in foundational pillars.' },
+  'LLLH': { name: 'The Forsaken Scribe', desc: 'Only possesses skills; critical deficits in body/mind/social.' },
+  'HLLL': { name: 'The Wild Huntsman', desc: 'Only possesses physical vitality; deficits in control and structure.' },
+  'HLHL': { name: 'The Wandering Troubadour', desc: 'High energy/social, but lacks focus and practical skills.' },
+  'LLHH': { name: 'The Cerebral Anchor', desc: 'Strong mind and connection; lacks physical and practical base.' }
 };
+
+function getArchetypeFromScores(scores) {
+  const code = ['V', 'R', 'C', 'M'].map(attr => ((scores ?? {})[attr] ?? 0) < 10 ? 'L' : 'H').join('');
+  return ARCHETYPES[code] || { name: 'The Wayward Alchemist', desc: 'Your path is unique and unwritten.' };
+}
 
 export default function App() {
   // Load saved state if it exists
@@ -81,22 +94,18 @@ export default function App() {
     const scores = { V: 0, R: 0, C: 0, M: 0 };
     let totalRaw = 0;
     QUESTIONS.forEach(q => {
-      scores[q.attr] += finalAnswers[q.id];
-      totalRaw += finalAnswers[q.id];
+      scores[q.attr] += finalAnswers[q.id] ?? 0;
+      totalRaw += finalAnswers[q.id] ?? 0;
     });
 
-    const code = ['V', 'R', 'C', 'M'].map(attr => {
-      const qCount = QUESTIONS.filter(q => q.attr === attr).length;
-      return (scores[attr] / qCount) >= 3 ? 'H' : 'L';
-    }).join('');
-
-    const initialLevel = Math.floor((totalRaw / 65) * 25);
+    const archetype = getArchetypeFromScores(scores);
+    const initialLevel = Math.max(1, Math.floor(totalRaw / 5)); // 16–80 totalRaw → level 1–16
     
     setResults({
       scores,
-      archetype: ARCHETYPES[code] || { name: 'The Wayward Alchemist', desc: 'Your path is unique and unwritten.' },
+      archetype,
       level: initialLevel,
-      xp: initialLevel * 1000, // Total XP based on curve TXR = 1000 * L^2
+      xp: initialLevel * 1000,
       coins: results?.coins ?? 0,
       primaryNeed: Object.keys(scores).reduce((a, b) => scores[a] < scores[b] ? a : b)
     });
@@ -118,17 +127,20 @@ export default function App() {
 
   const handleTaskComplete = (task) => {
     if (!results) return;
+    const { xp, coins } = getTaskRewards(task);
     const attrBonus = task.attr || {};
+    const newScores = {
+      V: (results.scores?.V ?? 0) + (attrBonus.V ?? 0),
+      R: (results.scores?.R ?? 0) + (attrBonus.R ?? 0),
+      C: (results.scores?.C ?? 0) + (attrBonus.C ?? 0),
+      M: (results.scores?.M ?? 0) + (attrBonus.M ?? 0),
+    };
     setResults((prev) => ({
       ...prev,
-      xp: (prev.xp ?? 0) + (task.xp ?? 0),
-      coins: (prev.coins ?? 0) + (task.coins ?? 0),
-      scores: {
-        V: (prev.scores?.V ?? 0) + (attrBonus.V ?? 0),
-        R: (prev.scores?.R ?? 0) + (attrBonus.R ?? 0),
-        C: (prev.scores?.C ?? 0) + (attrBonus.C ?? 0),
-        M: (prev.scores?.M ?? 0) + (attrBonus.M ?? 0),
-      },
+      xp: (prev.xp ?? 0) + xp,
+      coins: (prev.coins ?? 0) + coins,
+      scores: newScores,
+      archetype: getArchetypeFromScores(newScores),
     }));
     setCompletedTaskIds((prev) => [...prev, task.id]);
     setTaskBoardKey((k) => k + 1);
@@ -169,11 +181,22 @@ export default function App() {
     } else {
       setQuestFlowStep('complete');
       const { xp, coins } = getQuestRewards(selectedQuest);
-      setResults((prev) => ({
-        ...prev,
-        xp: (prev.xp ?? 0) + xp,
-        coins: (prev.coins ?? 0) + coins,
-      }));
+      const pillar = selectedQuest?.pillar ?? 'V';
+      setResults((prev) => {
+        const newScores = {
+          V: (prev.scores?.V ?? 0) + (pillar === 'V' ? 1 : 0),
+          R: (prev.scores?.R ?? 0) + (pillar === 'R' ? 1 : 0),
+          C: (prev.scores?.C ?? 0) + (pillar === 'C' ? 1 : 0),
+          M: (prev.scores?.M ?? 0) + (pillar === 'M' ? 1 : 0),
+        };
+        return {
+          ...prev,
+          xp: (prev.xp ?? 0) + xp,
+          coins: (prev.coins ?? 0) + coins,
+          scores: newScores,
+          archetype: getArchetypeFromScores(newScores),
+        };
+      });
     }
   };
 
@@ -209,7 +232,7 @@ export default function App() {
             className="h-screen flex flex-col items-center justify-center p-6">
             <div className="w-full max-w-2xl space-y-12">
               <div className="flex justify-between font-serif text-xs text-amber-500/50 uppercase tracking-widest">
-                <span>Entry {currentQ + 1}/13</span>
+                <span>Entry {currentQ + 1}/16</span>
                 <span>{QUESTIONS[currentQ].attr}</span>
               </div>
               <h2 className="font-serif text-3xl text-slate-200 leading-snug italic">"{QUESTIONS[currentQ].text}"</h2>
@@ -494,7 +517,9 @@ export default function App() {
                   <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
                     <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Dashboard — Quick Tasks</div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {boardTasks.map((task) => (
+                      {boardTasks.map((task) => {
+                        const { xp, coins } = getTaskRewards(task);
+                        return (
                         <div
                           key={task.id}
                           className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:border-amber-500/20 transition-colors"
@@ -502,18 +527,18 @@ export default function App() {
                           <button
                             onClick={() => handleTaskComplete(task)}
                             className="w-8 h-8 shrink-0 rounded-full border-2 border-amber-500/40 flex items-center justify-center text-amber-500 hover:bg-amber-500/20 hover:border-amber-500/60 transition-all"
-                            title={`Complete: +${task.xp} XP, +${task.coins} coins`}
+                            title={`Complete: +${xp} XP, +${coins} coins`}
                           >
                             <Check size={16} />
                           </button>
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-slate-200">{task.text}</p>
                             <p className="text-xs text-slate-500 mt-0.5">
-                              +{task.xp} XP · +{task.coins} coins {Object.keys(task.attr || {}).length ? `· +1 ${Object.keys(task.attr).join(',')}` : ''}
+                              +{xp} XP · +{coins} coins {Object.keys(task.attr || {}).length ? `· +1 ${Object.keys(task.attr).join(',')}` : ''}
                             </p>
                           </div>
                         </div>
-                      ))}
+                      );})}
                     </div>
                     {boardTasks.length === 0 && (
                       <p className="text-sm text-slate-500 italic">All tasks done for now. Great work!</p>

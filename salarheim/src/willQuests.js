@@ -2,6 +2,8 @@
 // The Architect's Echo — Will Quests for Sálarheim
 // 3 quests per sub-location × 2 sub-locations × 4 pillars = 24 quests
 
+import { calcXP } from './engine';
+
 export const WILL_QUESTS = [
   // ═══════════════════════════════════════════════════════════════
   // VITALITY — The Granite Altar
@@ -21,7 +23,8 @@ export const WILL_QUESTS = [
       'Drive through your legs and hips. Lift. Hold at the apex for one breath.',
       'Lower with control. The stone bears witness.',
     ],
-    signOfCompletion: 'Once the weight is stilled, the Altar glows—award yourself 50 XP.',
+    signOfCompletion: 'Once the weight is stilled, the Altar glows.',
+    difficulty: 'micro',
     unlocked: true,
   },
   {
@@ -37,7 +40,8 @@ export const WILL_QUESTS = [
       'Count your rounds. Let each rep be a bead on the string of your resolve.',
       'When the timer ends, kneel. Let the sweat fall. You have paid the toll.',
     ],
-    signOfCompletion: 'The forge-fires flicker in recognition—award yourself 75 XP.',
+    signOfCompletion: 'The forge-fires flicker in recognition.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -53,7 +57,8 @@ export const WILL_QUESTS = [
       'Approach. Breathe. Lift. If you fail, you have learned the edge. If you succeed, you have moved the boundary.',
       'Record the outcome. The stone remembers.',
     ],
-    signOfCompletion: 'The Granite Altar hums—award yourself 100 XP.',
+    signOfCompletion: 'The Granite Altar hums.',
+    difficulty: 'challenge',
     unlocked: false,
   },
 
@@ -71,7 +76,8 @@ export const WILL_QUESTS = [
       'Breathe into each held place. Ten breaths per region. Let the Font\'s warmth soften the edges.',
       'Rise slowly. The stillness lingers.',
     ],
-    signOfCompletion: 'The waters of the Font ripple in approval—award yourself 50 XP.',
+    signOfCompletion: 'The waters of the Font ripple in approval.',
+    difficulty: 'micro',
     unlocked: true,
   },
   {
@@ -87,7 +93,8 @@ export const WILL_QUESTS = [
       'Open the shoulders. Thread the needle, each side. Hold for thirty seconds.',
       'Finish with hamstrings. Fold forward. Let the crown hang. Surrender.',
     ],
-    signOfCompletion: 'The Font steams with your release—award yourself 75 XP.',
+    signOfCompletion: 'The Font steams with your release.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -103,7 +110,8 @@ export const WILL_QUESTS = [
       'Notice the body after. Energy rises or settles? Record it.',
       'Drink water as if from the Font itself. Eight glasses before dusk.',
     ],
-    signOfCompletion: 'The Altar glows from within—award yourself 75 XP.',
+    signOfCompletion: 'The Altar glows from within.',
+    difficulty: 'standard',
     unlocked: false,
   },
 
@@ -125,7 +133,8 @@ export const WILL_QUESTS = [
       'When the mind wanders—and it will—name it: "thinking." Return to the breath.',
       'Open your eyes. The Sanctum is still.',
     ],
-    signOfCompletion: 'The Cairn stones settle—award yourself 50 XP.',
+    signOfCompletion: 'The Cairn stones settle.',
+    difficulty: 'micro',
     unlocked: true,
   },
   {
@@ -141,7 +150,8 @@ export const WILL_QUESTS = [
       'When emotion stirs, feel it in the body. Where does it live? Breathe into it.',
       'When the bell sounds, bow. You have witnessed.',
     ],
-    signOfCompletion: 'The Cairn hums with your presence—award yourself 75 XP.',
+    signOfCompletion: 'The Cairn hums with your presence.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -157,7 +167,8 @@ export const WILL_QUESTS = [
       'Respond from the breath, not the storm. One sentence. One action.',
       'Afterward, sit for five minutes. Let the storm pass through. You remained.',
     ],
-    signOfCompletion: 'The Sanctum stands unshaken—award yourself 100 XP.',
+    signOfCompletion: 'The Sanctum stands unshaken.',
+    difficulty: 'challenge',
     unlocked: false,
   },
 
@@ -175,7 +186,8 @@ export const WILL_QUESTS = [
       'For each stone, name the single next action. Small. Concrete.',
       'Fold the paper. Carry it. The Labyrinth is drawn.',
     ],
-    signOfCompletion: 'The path is lit—award yourself 50 XP.',
+    signOfCompletion: 'The path is lit.',
+    difficulty: 'micro',
     unlocked: true,
   },
   {
@@ -191,7 +203,8 @@ export const WILL_QUESTS = [
       'Choose five priorities for the coming week. One per pillar if you can.',
       'Schedule one action for each priority. Not "someday"—a day, a time.',
     ],
-    signOfCompletion: 'The cairn rises—award yourself 75 XP.',
+    signOfCompletion: 'The cairn rises.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -207,7 +220,8 @@ export const WILL_QUESTS = [
       'Tell one person. Accountability makes the stone real.',
       'When the boundary is tested today, hold. The Sanctum depends on it.',
     ],
-    signOfCompletion: 'The wall holds—award yourself 100 XP.',
+    signOfCompletion: 'The wall holds.',
+    difficulty: 'challenge',
     unlocked: false,
   },
 
@@ -229,7 +243,8 @@ export const WILL_QUESTS = [
       'Do not expect a reply today. The offering is the act.',
       'If they respond, give them your full attention. Put the screen down. Listen.',
     ],
-    signOfCompletion: 'The Fire brightens—award yourself 50 XP.',
+    signOfCompletion: 'The Fire brightens.',
+    difficulty: 'micro',
     unlocked: true,
   },
   {
@@ -245,7 +260,8 @@ export const WILL_QUESTS = [
       'Ask one question that invites story: "What has been alive in you lately?"',
       'Listen more than you speak. The fire warms both ways.',
     ],
-    signOfCompletion: 'The Hearth crackles with warmth—award yourself 75 XP.',
+    signOfCompletion: 'The Hearth crackles with warmth.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -261,7 +277,8 @@ export const WILL_QUESTS = [
       'Send it. Call. Or, if they are gone, speak it aloud to the sky.',
       'Feel the warmth. You have fed the fire.',
     ],
-    signOfCompletion: 'The Hall glows with your offering—award yourself 75 XP.',
+    signOfCompletion: 'The Hall glows with your offering.',
+    difficulty: 'standard',
     unlocked: false,
   },
 
@@ -279,7 +296,8 @@ export const WILL_QUESTS = [
       'Say no. Clearly. "I cannot do that." "That doesn\'t work for me." No over-explaining.',
       'Notice the relief. The Gate holds.',
     ],
-    signOfCompletion: 'The Gate swings shut with dignity—award yourself 50 XP.',
+    signOfCompletion: 'The Gate swings shut with dignity.',
+    difficulty: 'micro',
     unlocked: true,
   },
   {
@@ -295,7 +313,8 @@ export const WILL_QUESTS = [
       'Use the time for one connection: a walk, a book, a conversation, or silence.',
       'When you return to the device, notice what you did not miss.',
     ],
-    signOfCompletion: 'The Hall grows quiet and clear—award yourself 75 XP.',
+    signOfCompletion: 'The Hall grows quiet and clear.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -311,7 +330,8 @@ export const WILL_QUESTS = [
       'Use "I" language. "I feel __ when __." "I need __." Speak your piece.',
       'Let the other respond. You have held the Gate. The rest is not yours to control.',
     ],
-    signOfCompletion: 'The Gate stands tall—award yourself 100 XP.',
+    signOfCompletion: 'The Gate stands tall.',
+    difficulty: 'challenge',
     unlocked: false,
   },
 
@@ -333,7 +353,8 @@ export const WILL_QUESTS = [
       'Practice at the edge of your ability—where you make mistakes. That is where growth lives.',
       'When the hour ends, note one thing you improved. The forge remembers.',
     ],
-    signOfCompletion: 'The Bench gleams with your effort—award yourself 75 XP.',
+    signOfCompletion: 'The Bench gleams with your effort.',
+    difficulty: 'standard',
     unlocked: true,
   },
   {
@@ -349,7 +370,8 @@ export const WILL_QUESTS = [
       'Listen without defending. Write down their words. The ego steps aside.',
       'Apply at least one piece of feedback. The skill deepens.',
     ],
-    signOfCompletion: 'The forge-master nods—award yourself 75 XP.',
+    signOfCompletion: 'The forge-master nods.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -365,7 +387,8 @@ export const WILL_QUESTS = [
       'Work in ninety-minute sprints. Twenty-minute rest between. No switching.',
       'When you finish, record what you accomplished. The Bench has witnessed.',
     ],
-    signOfCompletion: 'The Forge blazes with your focus—award yourself 100 XP.',
+    signOfCompletion: 'The Forge blazes with your focus.',
+    difficulty: 'challenge',
     unlocked: false,
   },
 
@@ -383,7 +406,8 @@ export const WILL_QUESTS = [
       'Name one expense you can reduce or one income stream you can start. Be specific.',
       'Schedule the next balance check. The Vault demands regularity.',
     ],
-    signOfCompletion: 'The Ledger glows with clarity—award yourself 75 XP.',
+    signOfCompletion: 'The Ledger glows with clarity.',
+    difficulty: 'standard',
     unlocked: true,
   },
   {
@@ -399,7 +423,8 @@ export const WILL_QUESTS = [
       'Verify it is set. Test it if you can. The rune must be drawn correctly.',
       'Mark the date. In one month, check that it ran. The Vault holds itself.',
     ],
-    signOfCompletion: 'The Vault hums with order—award yourself 75 XP.',
+    signOfCompletion: 'The Vault hums with order.',
+    difficulty: 'standard',
     unlocked: false,
   },
   {
@@ -415,7 +440,8 @@ export const WILL_QUESTS = [
       'Identify the first action. This week. One transfer, one call, one decision.',
       'Write the goal where you will see it. The Vault is built one stone at a time.',
     ],
-    signOfCompletion: 'The Vault\'s door creaks open toward the future—award yourself 100 XP.',
+    signOfCompletion: 'The Vault\'s door creaks open toward the future.',
+    difficulty: 'challenge',
     unlocked: false,
   },
 ];
@@ -436,10 +462,10 @@ export const getQuestsBySubLocation = (pillar, subLocationKey) => {
   return WILL_QUESTS.filter((q) => q.pillar === pillar && q.subLocation === name);
 };
 
-// Helper: extract XP and coins from quest (coins = XP / 2, min 10)
-export const getQuestRewards = (quest) => {
-  const match = quest?.signOfCompletion?.match(/(\d+)\s*XP/i);
-  const xp = match ? parseInt(match[1], 10) : 50;
+// Helper: XP from difficulty (XPT = Base 1000 × Difficulty × FocusBonus)
+export const getQuestRewards = (quest, focusBonus = 1) => {
+  const diff = quest?.difficulty ?? 'standard';
+  const xp = calcXP(diff, focusBonus);
   const coins = Math.max(10, Math.floor(xp / 2));
   return { xp, coins };
 };
