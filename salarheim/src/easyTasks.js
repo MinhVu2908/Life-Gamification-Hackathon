@@ -6,7 +6,7 @@ import { getTaskRewards } from './engine';
 
 export const EASY_TASKS = [
   // V - Vitality (physical, movement, hydration) — all micro
-  { id: 't1', text: 'Drink a glass of water', difficulty: 'micro', attrXP: { V: 1 } },
+  { id: 't1', text: 'Drink a glass of water.', difficulty: 'micro', attrXP: { V: 1 } },
   { id: 't3', text: 'Stand up and stretch for 30 sec', difficulty: 'micro', attrXP: { V: 1 } },
   { id: 't6', text: 'Step outside for 1 minute', difficulty: 'micro', attrXP: { V: 1 } },
   { id: 't8', text: 'Do 10 squats', difficulty: 'micro', attrXP: { V: 1 } },
