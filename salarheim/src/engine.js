@@ -64,6 +64,8 @@ export function getTaskAttrXPReward(task) {
 // Level 1: 0-49, Level 2: 50-99, ..., Level 10: 450-499 (trial max), no cap after creation.
 export const ATTR_XP_PER_LEVEL = 50;
 export const ATTR_MAX_LEVEL_TRIAL = 10;
+// All attributes at this level or higher allow ascension to next tier (Broken Vassal II, III, ...)
+export const ATTR_LEVEL_TO_ASCEND = 10;
 
 export function getAttrLevel(attrXP) {
   const x = Math.max(0, attrXP ?? 0);

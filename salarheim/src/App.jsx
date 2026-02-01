@@ -59,6 +59,27 @@ function getArchetypeFromAttrXP(attrXP) {
   return ARCHETYPES[code] || { name: 'The Wayward Alchemist', desc: 'Your path is unique and unwritten.' };
 }
 
+// Roman numeral for tier display (I, II, III, IV, V, ...)
+function toRoman(n) {
+  if (n <= 0 || n > 3999) return String(n);
+  const map = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
+    [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ];
+  let s = '';
+  for (const [val, sym] of map) {
+    while (n >= val) { s += sym; n -= val; }
+  }
+  return s;
+}
+
+// Display title: archetype name + tier suffix when tier > 1 (e.g. "The Broken Vassal II")
+function getDisplayTitle(results) {
+  const name = results?.archetype?.name ?? 'The Wayward Alchemist';
+  const tier = results?.tier ?? 1;
+  return tier > 1 ? `${name} ${toRoman(tier)}` : name;
+}
+
 const ATTR_NAMES = { V: 'Vitality', R: 'Resilience', C: 'Connection', M: 'Mastery' };
 const getQuestionsByAttr = (attr) => QUESTIONS.filter((q) => q.attr === attr);
 
@@ -124,6 +145,7 @@ export default function App() {
   });
   const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
   const [selectedGeneratedTask, setSelectedGeneratedTask] = useState(null);
+  const [showAscendModal, setShowAscendModal] = useState(false);
 
   // Board tasks - fixed set that doesn't regenerate after completion
   const [fixedBoardTasks, setFixedBoardTasks] = useState(() => {
@@ -260,7 +282,8 @@ export default function App() {
       level: totalLevel,
       xp: totalXP,
       coins: results?.coins ?? 0,
-      primaryNeed: Object.keys(attrXP).reduce((a, b) => attrXP[a] < attrXP[b] ? a : b)
+      primaryNeed: Object.keys(attrXP).reduce((a, b) => attrXP[a] < attrXP[b] ? a : b),
+      tier: results?.tier ?? 1
     });
   };
 
@@ -296,6 +319,34 @@ export default function App() {
     localStorage.removeItem('sh_defeated_enemies');
     localStorage.removeItem('sh_fixed_board_tasks');
     localStorage.removeItem('sh_generated_tasks');
+  };
+
+  // Hidden standard metric: 10 at creation; +1 per total level gained (used for ascension and debug)
+  const currentLevel = results?.level ?? 1;
+  const levelAtCreation = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem('sh_initial_level'), 10) : null;
+  const initialLevel = levelAtCreation ?? currentLevel;
+  const standardMetric = results ? 10 + Math.max(0, currentLevel - initialLevel) : null;
+
+  // Ascend when any attribute level is above the (hidden) average benchmark (standard metric)
+  const canAscend = results && standardMetric != null && ['V', 'R', 'C', 'M'].some((attr) =>
+    getAttrLevel(results.attrXP?.[attr] ?? trialScoreToAttrXP(results.scores?.[attr] ?? 0)) > standardMetric
+  );
+
+  const handleAscend = () => {
+    const nextTier = (results?.tier ?? 1) + 1;
+    const brokenVassal = ARCHETYPES['LLLL'];
+    setResults({
+      scores: null,
+      attrXP: { V: 0, R: 0, C: 0, M: 0 },
+      archetype: brokenVassal,
+      level: 1,
+      xp: 0,
+      coins: results?.coins ?? 0,
+      primaryNeed: 'V',
+      tier: nextTier
+    });
+    localStorage.setItem('sh_initial_level', '1');
+    setShowAscendModal(false);
   };
 
   const handleEditName = () => {
@@ -587,14 +638,26 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
     }
   };
 
-  // Hidden standard metric: 10 at account creation (any starting level); +1 only when total level increases after that
-  const currentLevel = results?.level ?? 1;
-  const levelAtCreation = typeof localStorage !== 'undefined' ? parseInt(localStorage.getItem('sh_initial_level'), 10) : null;
-  const initialLevel = levelAtCreation ?? currentLevel;
-  const standardMetric = results ? 10 + Math.max(0, currentLevel - initialLevel) : null;
+  const IMG = {
+    background: '/images/Background.png',
+    dashboardMap: encodeURI('/images/Dashboard general map.png'),
+    vitalityMap: encodeURI('/images/Vitality Woods map.png'),
+    resilienceMap: encodeURI('/images/Resilience Peak map.png'),
+    connectionMap: encodeURI('/images/Connection Map.png'),
+    masteryMap: encodeURI('/images/Mastery Map.png'),
+  };
 
   return (
-    <div className="min-h-screen bg-blue-100 text-slate-800 font-sans selection:bg-amber-500/30 overflow-x-hidden" style={{ imageRendering: 'pixelated' }}>
+    <div
+      className="min-h-screen text-slate-800 font-sans selection:bg-amber-500/30 overflow-x-hidden"
+      style={{
+        imageRendering: 'pixelated',
+        backgroundImage: `url(${IMG.background})`,
+        backgroundSize: 'cover',
+        backgroundAttachment: 'fixed',
+        backgroundPosition: 'center',
+      }}
+    >
       {standardMetric != null && (
         <div className="fixed top-4 right-4 z-50 px-3 py-1.5 bg-amber-900/90 text-amber-100 font-mono text-xs rounded border border-amber-700">
           standardMetric: {standardMetric}
@@ -833,8 +896,8 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                 </div>
               </div>
               
-              {/* Archetype Name */}
-              <h3 className="font-mono text-xl font-bold text-amber-900 text-center mb-2 uppercase">{results.archetype.name}</h3>
+              {/* Archetype Name (title updates with attribute levels; tier suffix when ascended) */}
+              <h3 className="font-mono text-xl font-bold text-amber-900 text-center mb-2 uppercase">{getDisplayTitle(results)}</h3>
               <p className="font-mono text-xs text-amber-900 text-center mb-6">"{results.archetype.desc}"</p>
               
               {/* Stats Header */}
@@ -1058,7 +1121,13 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                       <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
                         {selectedLocation === 'V' ? 'Vitality' : selectedLocation === 'R' ? 'Resilience' : selectedLocation === 'C' ? 'Connection' : 'Mastery'} — Will Quests
                       </div>
-                      <div className="relative w-full aspect-[4/3] max-w-2xl min-h-[280px] bg-salar-card rounded-2xl border border-white/5">
+                      <div className="relative w-full aspect-[4/3] max-w-2xl min-h-[280px] rounded-2xl border border-white/5 overflow-hidden bg-salar-card">
+                        <img
+                          src={selectedLocation === 'V' ? IMG.vitalityMap : selectedLocation === 'R' ? IMG.resilienceMap : selectedLocation === 'C' ? IMG.connectionMap : IMG.masteryMap}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                          style={{ imageRendering: 'pixelated' }}
+                        />
                         {getQuestsByPillar(selectedLocation)
                           .filter((q) => !completedQuestIds.includes(q.id))
                           .map((quest, i) => {
@@ -1067,7 +1136,7 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                           return (
                             <div
                               key={quest.id}
-                              className="absolute w-12 h-12 rounded-full flex items-center justify-center transition-all"
+                              className="absolute w-12 h-12 rounded-full flex items-center justify-center transition-all z-10"
                               style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
                               title={isLocked ? `${quest.title || 'Quest'} (Locked)` : quest.title}
                               aria-label={quest.title}
@@ -1270,8 +1339,18 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                         CLICK ME
                       </button>
                       <div className="w-full py-2 bg-orange-200 border-2 border-amber-900 text-amber-900 font-mono text-xs font-bold uppercase" style={{ imageRendering: 'pixelated' }}>
-                        {results.archetype.name.toUpperCase()}
+                        {getDisplayTitle(results).toUpperCase()}
                       </div>
+                      {canAscend && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAscendModal(true)}
+                          className="w-full mt-2 py-2 bg-amber-600 border-2 border-amber-900 text-amber-50 font-mono text-xs font-bold uppercase hover:bg-amber-500"
+                          style={{ imageRendering: 'pixelated', transition: 'none' }}
+                        >
+                          Ascend to Tier {toRoman((results?.tier ?? 1) + 1)}
+                        </button>
+                      )}
                     </div>
 
                     {/* Game Statistics (Right) */}
@@ -1601,7 +1680,7 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                 )}
 
                 {/* Game Screen - Battle Area */}
-                <div className="p-4 bg-green-200 border-4 border-green-900 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px' }}>
+                <div className="p-4 border-4 border-green-900 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px', backgroundImage: `url(${IMG.dashboardMap})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                   <div className="relative w-full h-full" style={{ minHeight: '250px' }}>
                     {/* User Character */}
                     {(() => {
@@ -1786,6 +1865,36 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
         )}
 
       </AnimatePresence>
+
+      {/* Ascend confirmation modal */}
+      {showAscendModal && results && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50" style={{ imageRendering: 'pixelated' }}>
+          <div className="bg-amber-50 border-4 border-amber-900 p-6 max-w-sm w-full" style={{ imageRendering: 'pixelated' }}>
+            <h3 className="font-mono text-lg font-bold text-amber-900 uppercase mb-2">Ascend to Tier {toRoman((results.tier ?? 1) + 1)}?</h3>
+            <p className="font-mono text-xs text-amber-900 mb-4">
+              You will become <strong>The Broken Vassal {toRoman((results.tier ?? 1) + 1)}</strong> and start over. Attributes and level reset; coins are kept.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAscendModal(false)}
+                className="flex-1 py-2 bg-slate-200 border-2 border-amber-900 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-slate-300"
+                style={{ imageRendering: 'pixelated', transition: 'none' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAscend}
+                className="flex-1 py-2 bg-amber-600 border-2 border-amber-900 text-amber-50 font-mono text-xs font-bold uppercase hover:bg-amber-500"
+                style={{ imageRendering: 'pixelated', transition: 'none' }}
+              >
+                Ascend
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
