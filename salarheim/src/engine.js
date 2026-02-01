@@ -8,11 +8,11 @@
 const BASE_XP = 1000;
 export const DIFFICULTY = { micro: 0.5, standard: 1.0, challenge: 2.0 };
 
-// Attribute XP boost (points toward 1-100 score) by difficulty
+// Attribute XP boost by difficulty (scaled for proper progression)
 const ATTR_BOOST = {
-  micro: { min: 1, max: 2 },
-  standard: { min: 3, max: 5 },
-  challenge: { min: 7, max: 10 },
+  micro: { min: 2, max: 4 },      // Small tasks give 2-4 attribute XP
+  standard: { min: 6, max: 10 },  // Standard tasks give 6-10 attribute XP
+  challenge: { min: 15, max: 25 }, // Challenge tasks give 15-25 attribute XP
 };
 
 export function calcXP(difficulty, focusBonus = 1) {
@@ -38,11 +38,63 @@ export function getTaskRewards(task, focusBonus = 1) {
   return { xp, coins };
 }
 
-// attrXP: { V, R, C, M } — score per attribute (0–100, Immediate Attribute Restoration)
-// attrLevel: derived from attrXP, e.g. level = 1 + floor(attrXP / 10), max level 10
-export const ATTR_MAX = 100;
-export const ATTR_XP_PER_LEVEL = 10;
+// Attribute leveling system with scaling XP requirements
+// Level 1: 0-20 XP, Level 2: 21-50 XP, Level 3: 51-90 XP, etc.
+// Formula: XP needed for level N = 20 * N * (N + 1) / 2 (triangular number scaling)
 export function getAttrLevel(attrXP) {
-  const x = Math.min(ATTR_MAX, attrXP ?? 0);
-  return Math.max(1, 1 + Math.floor(x / ATTR_XP_PER_LEVEL));
+  const x = attrXP ?? 0;
+  if (x <= 0) return 1;
+  
+  // Solve for level: XP = 20 * level * (level + 1) / 2
+  // XP = 10 * level * (level + 1)
+  // level^2 + level - XP/10 = 0
+  // level = (-1 + sqrt(1 + 4*XP/10)) / 2
+  const level = Math.floor((-1 + Math.sqrt(1 + (4 * x) / 10)) / 2) + 1;
+  return Math.max(1, level);
+}
+
+// Get XP required for a specific attribute level
+export function getAttrXPForLevel(level) {
+  if (level <= 1) return 0;
+  // XP needed = 10 * (level - 1) * level
+  return 10 * (level - 1) * level;
+}
+
+// Get XP within current level
+export function getAttrXPInLevel(attrXP) {
+  const level = getAttrLevel(attrXP);
+  const xpForCurrentLevel = getAttrXPForLevel(level);
+  const xpForNextLevel = getAttrXPForLevel(level + 1);
+  const xpInLevel = (attrXP ?? 0) - xpForCurrentLevel;
+  const xpNeededForNext = xpForNextLevel - xpForCurrentLevel;
+  return { current: xpInLevel, needed: xpNeededForNext };
+}
+
+// Total level XP scaling: exponential growth
+// Level 1: 0-1000, Level 2: 1001-2500, Level 3: 2501-5000, etc.
+export function getTotalLevel(totalXP) {
+  if (totalXP <= 0) return 1;
+  
+  // XP formula: XP = 500 * level^2 + 500 * level
+  // Solving: level = (-500 + sqrt(500^2 + 4*500*XP)) / (2*500)
+  // Simplified: level = (-1 + sqrt(1 + 4*XP/500)) / 2
+  const level = Math.floor((-1 + Math.sqrt(1 + (4 * totalXP) / 500)) / 2) + 1;
+  return Math.max(1, level);
+}
+
+// Get XP required for a specific total level
+export function getTotalXPForLevel(level) {
+  if (level <= 1) return 0;
+  // XP needed = 500 * (level - 1) * level
+  return 500 * (level - 1) * level;
+}
+
+// Get XP within current total level
+export function getTotalXPInLevel(totalXP) {
+  const level = getTotalLevel(totalXP);
+  const xpForCurrentLevel = getTotalXPForLevel(level);
+  const xpForNextLevel = getTotalXPForLevel(level + 1);
+  const xpInLevel = (totalXP ?? 0) - xpForCurrentLevel;
+  const xpNeededForNext = xpForNextLevel - xpForCurrentLevel;
+  return { current: xpInLevel, needed: xpNeededForNext };
 }

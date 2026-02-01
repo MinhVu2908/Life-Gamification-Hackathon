@@ -3,7 +3,7 @@ import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Send, RefreshCw, Coins, 
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
 import { getTasksForBoard, getTaskRewards, EASY_TASKS } from './easyTasks';
-import { getAttrLevel, ATTR_MAX } from './engine';
+import { getAttrLevel, getAttrXPInLevel, getTotalLevel, getTotalXPInLevel } from './engine';
 
 // --- Research Data --- (4 questions per attribute, 16 total)
 const QUESTIONS = [
@@ -208,22 +208,25 @@ export default function App() {
       totalRaw += finalAnswers[q.id] ?? 0;
     });
 
-    // attrXP: 0–100 per attribute. Initial from trial (4–20) → *5 = 20–100
+    // attrXP: unlimited per attribute. Initial from trial (4–20) → *5 = 20–100
     const attrXP = {
-      V: Math.min(ATTR_MAX, (scores.V ?? 0) * 5),
-      R: Math.min(ATTR_MAX, (scores.R ?? 0) * 5),
-      C: Math.min(ATTR_MAX, (scores.C ?? 0) * 5),
-      M: Math.min(ATTR_MAX, (scores.M ?? 0) * 5),
+      V: (scores.V ?? 0) * 5,
+      R: (scores.R ?? 0) * 5,
+      C: (scores.C ?? 0) * 5,
+      M: (scores.M ?? 0) * 5,
     };
     const archetype = getArchetypeFromAttrXP(attrXP);
-    const initialLevel = Math.max(1, Math.floor(totalRaw / 5));
+    // Calculate initial total XP based on trial scores (4-20 per attribute, 16-80 total)
+    // Convert to a reasonable starting XP (e.g., 100 XP per point)
+    const initialTotalXP = totalRaw * 100;
+    const initialLevel = getTotalLevel(initialTotalXP);
     
     setResults({
       scores,
       attrXP,
       archetype,
       level: initialLevel,
-      xp: initialLevel * 1000,
+      xp: initialTotalXP,
       coins: results?.coins ?? 0,
       primaryNeed: Object.keys(attrXP).reduce((a, b) => attrXP[a] < attrXP[b] ? a : b)
     });
@@ -312,14 +315,17 @@ export default function App() {
       setResults((prev) => {
         const base = (v, s) => (v ?? (s ?? 0) * 5);
         const newAttrXP = {
-          V: Math.min(ATTR_MAX, base(prev.attrXP?.V, prev.scores?.V) + (attrBonus.V ?? 0)),
-          R: Math.min(ATTR_MAX, base(prev.attrXP?.R, prev.scores?.R) + (attrBonus.R ?? 0)),
-          C: Math.min(ATTR_MAX, base(prev.attrXP?.C, prev.scores?.C) + (attrBonus.C ?? 0)),
-          M: Math.min(ATTR_MAX, base(prev.attrXP?.M, prev.scores?.M) + (attrBonus.M ?? 0)),
+          V: base(prev.attrXP?.V, prev.scores?.V) + (attrBonus.V ?? 0),
+          R: base(prev.attrXP?.R, prev.scores?.R) + (attrBonus.R ?? 0),
+          C: base(prev.attrXP?.C, prev.scores?.C) + (attrBonus.C ?? 0),
+          M: base(prev.attrXP?.M, prev.scores?.M) + (attrBonus.M ?? 0),
         };
+        const newTotalXP = (prev.xp ?? 0) + xp;
+        const newTotalLevel = getTotalLevel(newTotalXP);
         return {
           ...prev,
-          xp: (prev.xp ?? 0) + xp,
+          xp: newTotalXP,
+          level: newTotalLevel,
           coins: (prev.coins ?? 0) + coins,
           attrXP: newAttrXP,
           archetype: getArchetypeFromAttrXP(newAttrXP),
@@ -383,14 +389,17 @@ export default function App() {
       setResults((prev) => {
         const base = (v, s) => (v ?? (s ?? 0) * 5);
         const newAttrXP = {
-          V: Math.min(ATTR_MAX, base(prev.attrXP?.V, prev.scores?.V) + (attrBonus?.V ?? 0)),
-          R: Math.min(ATTR_MAX, base(prev.attrXP?.R, prev.scores?.R) + (attrBonus?.R ?? 0)),
-          C: Math.min(ATTR_MAX, base(prev.attrXP?.C, prev.scores?.C) + (attrBonus?.C ?? 0)),
-          M: Math.min(ATTR_MAX, base(prev.attrXP?.M, prev.scores?.M) + (attrBonus?.M ?? 0)),
+          V: base(prev.attrXP?.V, prev.scores?.V) + (attrBonus?.V ?? 0),
+          R: base(prev.attrXP?.R, prev.scores?.R) + (attrBonus?.R ?? 0),
+          C: base(prev.attrXP?.C, prev.scores?.C) + (attrBonus?.C ?? 0),
+          M: base(prev.attrXP?.M, prev.scores?.M) + (attrBonus?.M ?? 0),
         };
+        const newTotalXP = (prev.xp ?? 0) + xp;
+        const newTotalLevel = getTotalLevel(newTotalXP);
         return {
           ...prev,
-          xp: (prev.xp ?? 0) + xp,
+          xp: newTotalXP,
+          level: newTotalLevel,
           coins: (prev.coins ?? 0) + coins,
           attrXP: newAttrXP,
           archetype: getArchetypeFromAttrXP(newAttrXP),
@@ -528,11 +537,12 @@ export default function App() {
               {['V','R','C','M'].map((attr) => {
                 const xp = results.attrXP?.[attr] ?? (results.scores?.[attr] ?? 0) * 5;
                 const level = getAttrLevel(xp);
+                const xpInfo = getAttrXPInLevel(xp);
                 return (
                   <div key={attr} className={`p-4 bg-white/5 border border-white/10 rounded-xl text-center ${results.primaryNeed === attr ? 'border-amber-500/50 bg-amber-500/5' : ''}`}>
                     <div className="text-[10px] uppercase text-slate-500 mb-1">{attr}</div>
                     <div className="text-2xl font-serif">Lv{level}</div>
-                    <div className="text-xs text-slate-500">{xp}/100</div>
+                    <div className="text-xs text-slate-500">{xpInfo.current}/{xpInfo.needed} XP</div>
                   </div>
                 );
               })}
@@ -908,21 +918,31 @@ export default function App() {
                       <div className="bg-salar-card border-2 border-amber-900/40 p-3 md:col-span-1 col-span-2" style={{ imageRendering: 'pixelated' }}>
                         <div className="text-xs font-bold text-amber-500/80 mb-1">EXPERIENCE</div>
                         <div className="text-sm text-amber-500 mb-1">{results.xp} XP</div>
-                        <div className="w-full h-3 bg-amber-900/30 border border-amber-900/50 mb-1" style={{ imageRendering: 'pixelated' }}>
-                          <div 
-                            className="h-full bg-amber-500 border-r border-amber-900/50"
-                            style={{ 
-                              width: `${Math.min(100, ((results.xp % 1000) / 1000) * 100)}%`,
-                              imageRendering: 'pixelated'
-                            }}
-                          ></div>
-                        </div>
-                        <div className="text-xs text-slate-400">{1000 - (results.xp % 1000)} XP to next level</div>
+                        {(() => {
+                          const xpInfo = getTotalXPInLevel(results.xp);
+                          const progressPercent = (xpInfo.current / xpInfo.needed) * 100;
+                          return (
+                            <>
+                              <div className="w-full h-3 bg-amber-900/30 border border-amber-900/50 mb-1" style={{ imageRendering: 'pixelated' }}>
+                                <div 
+                                  className="h-full bg-amber-500 border-r border-amber-900/50"
+                                  style={{ 
+                                    width: `${Math.min(100, progressPercent)}%`,
+                                    imageRendering: 'pixelated'
+                                  }}
+                                ></div>
+                              </div>
+                              <div className="text-xs text-slate-400">{xpInfo.needed - xpInfo.current} XP to next level</div>
+                            </>
+                          );
+                        })()}
                       </div>
 
                       {/* Attributes */}
                       {['V', 'R', 'C', 'M'].map((attr, idx) => {
                         const xp = results.attrXP?.[attr] ?? (results.scores?.[attr] ?? 0) * 5;
+                        const level = getAttrLevel(xp);
+                        const xpInfo = getAttrXPInLevel(xp);
                         const icons = [
                           <Zap key="v" size={14} className="text-yellow-500" />,
                           <Sparkles key="r" size={14} className="text-pink-500" />,
@@ -936,7 +956,8 @@ export default function App() {
                               {icons[idx]}
                               <span className="text-xs font-bold text-amber-500/80">{names[idx]}</span>
                             </div>
-                            <div className="text-lg font-bold text-amber-500">{xp}</div>
+                            <div className="text-lg font-bold text-amber-500">Lv{level}</div>
+                            <div className="text-xs text-slate-400">{xpInfo.current}/{xpInfo.needed} XP</div>
                           </div>
                         );
                       })}
