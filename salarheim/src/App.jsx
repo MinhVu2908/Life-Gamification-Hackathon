@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw, RefreshCw, Coins, Zap } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw, RefreshCw, Coins, Zap, Check, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
+import { getTasksForBoard } from './easyTasks';
 
 // --- Research Data ---
 const QUESTIONS = [
@@ -53,12 +54,21 @@ export default function App() {
   const [selectedQuest, setSelectedQuest] = useState(null);
   const [questFlowStep, setQuestFlowStep] = useState(null); // 'confirm' | 'availability' | 'in-progress' | 'complete'
   const [questStepIndex, setQuestStepIndex] = useState(0);
+  const [completedTaskIds, setCompletedTaskIds] = useState(() => JSON.parse(localStorage.getItem('sh_completed_tasks')) || []);
+  const [taskBoardKey, setTaskBoardKey] = useState(0); // force re-fetch when completing a task
+
+  // Board tasks (4 random, excluding completed)
+  const boardTasks = useMemo(
+    () => getTasksForBoard(completedTaskIds, 4),
+    [completedTaskIds, taskBoardKey]
+  );
 
   // Persistence Hook
   useEffect(() => {
     localStorage.setItem('sh_step', step);
     if (results) localStorage.setItem('sh_results', JSON.stringify(results));
-  }, [step, results]);
+    localStorage.setItem('sh_completed_tasks', JSON.stringify(completedTaskIds));
+  }, [step, results, completedTaskIds]);
 
   const handleAnswer = (val) => {
     const newAnswers = { ...answers, [QUESTIONS[currentQ].id]: val };
@@ -100,8 +110,28 @@ export default function App() {
     setResults(null);
     setSelectedQuest(null);
     setQuestFlowStep(null);
+    setCompletedTaskIds([]);
     localStorage.removeItem('sh_step');
     localStorage.removeItem('sh_results');
+    localStorage.removeItem('sh_completed_tasks');
+  };
+
+  const handleTaskComplete = (task) => {
+    if (!results) return;
+    const attrBonus = task.attr || {};
+    setResults((prev) => ({
+      ...prev,
+      xp: (prev.xp ?? 0) + (task.xp ?? 0),
+      coins: (prev.coins ?? 0) + (task.coins ?? 0),
+      scores: {
+        V: (prev.scores?.V ?? 0) + (attrBonus.V ?? 0),
+        R: (prev.scores?.R ?? 0) + (attrBonus.R ?? 0),
+        C: (prev.scores?.C ?? 0) + (attrBonus.C ?? 0),
+        M: (prev.scores?.M ?? 0) + (attrBonus.M ?? 0),
+      },
+    }));
+    setCompletedTaskIds((prev) => [...prev, task.id]);
+    setTaskBoardKey((k) => k + 1);
   };
 
   const handleQuestClick = (quest) => {
@@ -412,50 +442,83 @@ export default function App() {
                 </div>
               ) : (
                 <>
-              {/* Top row: Profile (left) + Welcome prompt (right) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {/* Profile - top left */}
-                <div className="p-4 bg-salar-card rounded-2xl border border-white/5 flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
-                    <span className="text-amber-500 font-serif text-xl">S</span>
+              {/* Two-column layout: Left (profile, prompt, scan) | Right (welcome, task board) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Left column: Profile, AI prompt, Scan camera */}
+                <div className="space-y-4">
+                  {/* Profile - top left */}
+                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5 flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0">
+                      <span className="text-amber-500 font-serif text-xl">S</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-serif text-amber-500 uppercase tracking-wider text-sm">{results.archetype.name}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">Level {results.level}</div>
+                      <div className="text-xs text-slate-400 mt-0.5">Exp: {results.xp}</div>
+                      <div className="text-xs text-slate-400">Coins: {results.coins ?? 0}</div>
+                      <div className="text-xs text-slate-400">V:{results.scores.V} R:{results.scores.R} C:{results.scores.C} M:{results.scores.M}</div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-serif text-amber-500 uppercase tracking-wider text-sm">{results.archetype.name}</div>
-                    <div className="text-xs text-slate-500 mt-0.5">Level {results.level}</div>
-                    <div className="text-xs text-slate-400 mt-0.5">Exp: {results.xp}</div>
-                    <div className="text-xs text-slate-400">Coins: {results.coins ?? 0}</div>
-                    <div className="text-xs text-slate-400">V:{results.scores.V} R:{results.scores.R} C:{results.scores.C} M:{results.scores.M}</div>
+
+                  {/* AI prompt */}
+                  <div className="p-3 bg-salar-card rounded-xl border border-white/5">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Write prompt..."
+                        className="flex-1 bg-transparent border-none outline-none text-slate-300 placeholder:text-slate-600 text-sm"
+                        readOnly
+                      />
+                      <button className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" disabled>
+                        <Send size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Scan camera */}
+                  <div className="aspect-[4/3] max-w-full bg-salar-card rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500">
+                    <Camera size={40} className="mb-2 opacity-50" />
+                    <span className="text-sm">Capture Picture</span>
                   </div>
                 </div>
 
-                {/* Welcome prompt - top right */}
-                <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
-                  <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Welcome</div>
-                  <p className="font-serif italic text-slate-300 text-sm">"{results.archetype.desc}"</p>
-                </div>
-              </div>
-
-              {/* Middle: AI prompt + Scan camera */}
-              <div className="space-y-4">
-                {/* AI prompt */}
-                <div className="p-3 bg-salar-card rounded-xl border border-white/5">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Write prompt..."
-                      className="flex-1 bg-transparent border-none outline-none text-slate-300 placeholder:text-slate-600 text-sm"
-                      readOnly
-                    />
-                    <button className="p-2 rounded-lg bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors shrink-0" disabled>
-                      <Send size={18} />
-                    </button>
+                {/* Right column: Welcome prompt, Task board */}
+                <div className="space-y-4">
+                  {/* Welcome prompt - top right */}
+                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Welcome</div>
+                    <p className="font-serif italic text-slate-300 text-sm">"{results.archetype.desc}"</p>
                   </div>
-                </div>
 
-                {/* Scan camera */}
-                <div className="aspect-[4/3] max-w-md bg-salar-card rounded-xl border border-dashed border-white/10 flex flex-col items-center justify-center text-slate-500">
-                  <Camera size={40} className="mb-2 opacity-50" />
-                  <span className="text-sm">Capture Picture</span>
+                  {/* Task board - below welcome */}
+                  <div className="p-4 bg-salar-card rounded-2xl border border-white/5">
+                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Dashboard — Quick Tasks</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {boardTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="flex items-center gap-3 p-3 rounded-xl border border-white/5 bg-white/[0.02] hover:border-amber-500/20 transition-colors"
+                        >
+                          <button
+                            onClick={() => handleTaskComplete(task)}
+                            className="w-8 h-8 shrink-0 rounded-full border-2 border-amber-500/40 flex items-center justify-center text-amber-500 hover:bg-amber-500/20 hover:border-amber-500/60 transition-all"
+                            title={`Complete: +${task.xp} XP, +${task.coins} coins`}
+                          >
+                            <Check size={16} />
+                          </button>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm text-slate-200">{task.text}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              +{task.xp} XP · +{task.coins} coins {Object.keys(task.attr || {}).length ? `· +1 ${Object.keys(task.attr).join(',')}` : ''}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {boardTasks.length === 0 && (
+                      <p className="text-sm text-slate-500 italic">All tasks done for now. Great work!</p>
+                    )}
+                  </div>
                 </div>
               </div>
                 </>
