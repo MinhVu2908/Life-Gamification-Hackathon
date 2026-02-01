@@ -109,6 +109,19 @@ export default function App() {
   const [defeatedEnemies, setDefeatedEnemies] = useState(() => JSON.parse(localStorage.getItem('sh_defeated_enemies')) || []);
   const [attackingEnemy, setAttackingEnemy] = useState(null);
   const [userPosition, setUserPosition] = useState({ x: 20, y: 70 }); // Starting position in percentage (bottom left)
+  const [generatedTasks, setGeneratedTasks] = useState(() => {
+    const saved = localStorage.getItem('sh_generated_tasks');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  const [selectedGeneratedTask, setSelectedGeneratedTask] = useState(null);
 
   // Board tasks - fixed set that doesn't regenerate after completion
   const [fixedBoardTasks, setFixedBoardTasks] = useState(() => {
@@ -137,6 +150,20 @@ export default function App() {
       }
     }
   }, [results]);
+
+  // Save generated tasks to localStorage
+  useEffect(() => {
+    if (generatedTasks.length > 0) {
+      localStorage.setItem('sh_generated_tasks', JSON.stringify(generatedTasks));
+    }
+  }, [generatedTasks]);
+
+  // Save generated tasks to localStorage
+  useEffect(() => {
+    if (generatedTasks.length > 0) {
+      localStorage.setItem('sh_generated_tasks', JSON.stringify(generatedTasks));
+    }
+  }, [generatedTasks]);
 
   // Save fixed board tasks to localStorage
   useEffect(() => {
@@ -251,6 +278,7 @@ export default function App() {
     setAttackingEnemy(null);
     setUserPosition({ x: 20, y: 70 });
     setFixedBoardTasks([]);
+    setGeneratedTasks([]);
     setProfileView(false);
     setMapView(false);
     localStorage.removeItem('sh_step');
@@ -261,6 +289,7 @@ export default function App() {
     localStorage.removeItem('sh_user_description');
     localStorage.removeItem('sh_defeated_enemies');
     localStorage.removeItem('sh_fixed_board_tasks');
+    localStorage.removeItem('sh_generated_tasks');
   };
 
   const handleEditName = () => {
@@ -421,6 +450,124 @@ export default function App() {
     setSelectedQuest(null);
     setQuestFlowStep(null);
     setQuestStepIndex(0);
+  };
+
+  // Generate tasks using Gemini API
+  const handleGenerateTasks = async () => {
+    if (!results) return;
+    
+    setIsGeneratingTasks(true);
+    try {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey) {
+        alert('API key not configured. Please set VITE_GEMINI_API_KEY in your environment variables.');
+        setIsGeneratingTasks(false);
+        return;
+      }
+
+      // Build prompt with user info and stats
+      const userStats = {
+        level: results.level,
+        xp: results.xp,
+        attributes: {
+          V: getAttrLevel(results.attrXP?.V ?? (results.scores?.V ?? 0) * 5),
+          R: getAttrLevel(results.attrXP?.R ?? (results.scores?.R ?? 0) * 5),
+          C: getAttrLevel(results.attrXP?.C ?? (results.scores?.C ?? 0) * 5),
+          M: getAttrLevel(results.attrXP?.M ?? (results.scores?.M ?? 0) * 5),
+        },
+        archetype: results.archetype.name,
+        description: userDescription || 'No description provided'
+      };
+
+      const prompt = `Generate 3 personalized daily tasks for a user in a gamification app. 
+
+User Information:
+- Name: ${userName || 'User'}
+- Description: ${userStats.description}
+- Archetype: ${userStats.archetype}
+- Level: ${userStats.level}
+- Attributes: Physical Lv${userStats.attributes.V}, Mental Lv${userStats.attributes.R}, Social Lv${userStats.attributes.C}, Intelligent Lv${userStats.attributes.M}
+
+Generate 3 tasks that are:
+1. Personalized based on the user's description and archetype
+2. Appropriate for their current attribute levels
+3. Actionable and specific
+4. Varied in difficulty (mix of micro, standard, and challenge tasks)
+
+Return ONLY a JSON array of objects with this exact format:
+[
+  {
+    "title": "Short task title (max 50 characters)",
+    "description": "Detailed task description with steps and instructions",
+    "difficulty": "micro|standard|challenge",
+    "attrXP": {"V": 1} or {"R": 1} or {"C": 1} or {"M": 1} or combination of attributes
+  },
+  ...
+]
+
+Important:
+- "title" should be a concise, catchy title (max 50 chars) that summarizes the task
+- "description" should be the full detailed explanation with steps, context, and instructions
+- "difficulty" must be one of: "micro", "standard", or "challenge"
+- "attrXP" should be an object with attribute keys (V, R, C, M) and numeric values (1-5 for micro, 3-10 for standard, 8-25 for challenge)
+
+Do not include any other text, only the JSON array.`;
+
+      // Use the correct Gemini API endpoint
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: prompt
+            }]
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error Response:', errorData);
+        throw new Error(`API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+        console.error('Unexpected API response:', data);
+        throw new Error('Invalid response format from API');
+      }
+      
+      const responseText = data.candidates[0].content.parts[0].text;
+      
+      // Extract JSON from response (handle markdown code blocks if present)
+      let jsonText = responseText.trim();
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      }
+      
+      const tasks = JSON.parse(jsonText);
+      
+      // Add unique IDs and ensure proper format
+      const formattedTasks = tasks.map((task, index) => ({
+        id: `generated-${Date.now()}-${index}`,
+        title: task.title || task.text?.substring(0, 50) || `Task ${index + 1}`,
+        text: task.description || task.text || task.title || `Task ${index + 1}`,
+        description: task.description || task.text || task.title || `Task ${index + 1}`,
+        difficulty: task.difficulty || 'standard',
+        attrXP: task.attrXP || { V: 1 }
+      }));
+
+      setGeneratedTasks(formattedTasks);
+    } catch (error) {
+      console.error('Error generating tasks:', error);
+      alert('Failed to generate tasks. Please try again.');
+    } finally {
+      setIsGeneratingTasks(false);
+    }
   };
 
   return (
@@ -1156,13 +1303,16 @@ export default function App() {
                     <div className="p-4 bg-slate-100 border-2 border-amber-900 flex flex-col items-center justify-center min-h-[120px]" style={{ imageRendering: 'pixelated' }}>
                       <div className="text-center">
                         <Zap size={32} className="text-amber-700 mx-auto mb-2" style={{ imageRendering: 'pixelated' }} />
-                        <p className="text-xs font-mono text-amber-900 mb-3">Task generation coming soon</p>
+                        <p className="text-xs font-mono text-amber-900 mb-3">
+                          {isGeneratingTasks ? 'Generating tasks...' : 'Generate personalized tasks'}
+                        </p>
                         <button 
+                          onClick={handleGenerateTasks}
                           className="px-6 py-2 bg-orange-500 border-2 border-amber-900 text-black font-mono text-xs font-bold uppercase hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{ imageRendering: 'pixelated', transition: 'none' }}
-                          disabled
+                          disabled={isGeneratingTasks || !results}
                         >
-                          GENERATE
+                          {isGeneratingTasks ? 'GENERATING...' : 'GENERATE'}
                         </button>
                       </div>
                     </div>
@@ -1234,6 +1384,163 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+
+                {/* Customized Generated Tasks Section */}
+                {generatedTasks.length > 0 && (
+                  <div className="p-4 bg-amber-50 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
+                    <div className="bg-purple-600 border-2 border-purple-900 p-3 mb-3" style={{ imageRendering: 'pixelated' }}>
+                      <h3 className="text-sm font-mono font-bold text-white uppercase">Customized Tasks</h3>
+                    </div>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+                      {generatedTasks.map((task) => {
+                        const { xp, coins } = getTaskRewards(task);
+                        const isCompleted = completedTaskIds.includes(task.id);
+                        const attrIcons = {
+                          'V': <Zap size={12} className="text-yellow-600" style={{ imageRendering: 'pixelated' }} />,
+                          'R': <Sparkles size={12} className="text-pink-600" style={{ imageRendering: 'pixelated' }} />,
+                          'C': <User size={12} className="text-blue-600" style={{ imageRendering: 'pixelated' }} />,
+                          'M': <Zap size={12} className="text-green-600" style={{ imageRendering: 'pixelated' }} />
+                        };
+                        const taskAttr = Object.keys(task.attrXP || {})[0];
+                        return (
+                          <div
+                            key={task.id}
+                            className={`bg-slate-100 border-2 p-2 ${
+                              isCompleted 
+                                ? 'border-gray-500 opacity-50' 
+                                : 'border-amber-900 hover:bg-amber-100'
+                            }`}
+                            style={{ imageRendering: 'pixelated', transition: 'none' }}
+                          >
+                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                              {taskAttr && attrIcons[taskAttr]}
+                              <button
+                                onClick={() => setSelectedGeneratedTask(task)}
+                                className={`text-left flex-1 min-w-0 text-xs font-mono font-bold truncate ${isCompleted ? 'text-gray-600 line-through' : 'text-amber-900'} hover:underline cursor-pointer`}
+                              >
+                                {task.title || task.text?.substring(0, 50) || 'Task'}
+                              </button>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`text-[10px] font-mono font-bold ${isCompleted ? 'text-gray-600' : 'text-amber-900'}`}>
+                                  {isCompleted ? '✓' : `+${xp}`}
+                                </span>
+                                {!isCompleted && (
+                                  <button
+                                    onClick={() => handleTaskComplete(task, true)}
+                                    className="w-5 h-5 border-2 border-amber-900 bg-orange-300 flex items-center justify-center hover:bg-orange-400"
+                                    title={`Complete: +${xp} XP, +${coins} coins`}
+                                    style={{ imageRendering: 'pixelated', transition: 'none' }}
+                                  >
+                                    <Check size={10} className="text-amber-900" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Customized Task Detail Popup */}
+                {selectedGeneratedTask && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 z-50 bg-blue-100/95 flex flex-col items-center justify-center p-6"
+                    style={{ imageRendering: 'pixelated' }}
+                    onClick={() => setSelectedGeneratedTask(null)}
+                  >
+                    <div 
+                      className="w-full max-w-lg bg-amber-50 border-4 border-amber-900 p-6 relative" 
+                      style={{ imageRendering: 'pixelated', boxShadow: '8px 8px 0px 0px #8B4513' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Close button */}
+                      <button
+                        onClick={() => setSelectedGeneratedTask(null)}
+                        className="absolute top-2 right-2 w-6 h-6 border-2 border-amber-900 bg-red-400 text-amber-900 font-mono text-xs font-bold hover:bg-red-500 flex items-center justify-center"
+                        style={{ imageRendering: 'pixelated', transition: 'none' }}
+                      >
+                        ×
+                      </button>
+                      
+                      {/* Task Header */}
+                      <div className="mb-4">
+                        <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-3" style={{ imageRendering: 'pixelated' }}>
+                          <h3 className="text-white font-mono text-sm font-bold uppercase">Task Details</h3>
+                        </div>
+                        {(() => {
+                          const taskAttr = Object.keys(selectedGeneratedTask.attrXP || {})[0];
+                          const attrIcons = {
+                            'V': <Zap size={16} className="text-yellow-600" style={{ imageRendering: 'pixelated' }} />,
+                            'R': <Sparkles size={16} className="text-pink-600" style={{ imageRendering: 'pixelated' }} />,
+                            'C': <User size={16} className="text-blue-600" style={{ imageRendering: 'pixelated' }} />,
+                            'M': <Zap size={16} className="text-green-600" style={{ imageRendering: 'pixelated' }} />
+                          };
+                          const { xp, coins } = getTaskRewards(selectedGeneratedTask);
+                          return (
+                            <div className="flex items-center gap-2 mb-2">
+                              {taskAttr && attrIcons[taskAttr]}
+                              <span className="font-mono text-xs text-amber-900">
+                                Difficulty: {selectedGeneratedTask.difficulty || 'standard'} | 
+                                Reward: +{xp} XP, +{coins} coins
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      
+                      {/* Task Title */}
+                      <div className="mb-3">
+                        <h4 className="font-mono text-sm font-bold text-amber-900 uppercase mb-2">
+                          {selectedGeneratedTask.title || selectedGeneratedTask.text?.substring(0, 50)}
+                        </h4>
+                      </div>
+                      
+                      {/* Task Description */}
+                      <div className="bg-yellow-200 border-2 border-amber-900 p-4 mb-4" style={{ imageRendering: 'pixelated' }}>
+                        <p className="font-mono text-xs text-amber-900 leading-relaxed whitespace-pre-wrap">
+                          {selectedGeneratedTask.description || selectedGeneratedTask.text}
+                        </p>
+                      </div>
+                      
+                      {/* Action Buttons */}
+                      {!completedTaskIds.includes(selectedGeneratedTask.id) && (
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              handleTaskComplete(selectedGeneratedTask, true);
+                              setSelectedGeneratedTask(null);
+                            }}
+                            className="flex-1 py-3 border-4 border-amber-900 bg-green-500 text-white font-mono text-xs font-bold uppercase hover:bg-green-600"
+                            style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #1a5a1a' }}
+                          >
+                            Complete Task
+                          </button>
+                          <button
+                            onClick={() => setSelectedGeneratedTask(null)}
+                            className="px-6 py-3 border-4 border-amber-900 bg-gray-300 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-gray-400"
+                            style={{ imageRendering: 'pixelated', transition: 'none' }}
+                          >
+                            Close
+                          </button>
+                        </div>
+                      )}
+                      {completedTaskIds.includes(selectedGeneratedTask.id) && (
+                        <button
+                          onClick={() => setSelectedGeneratedTask(null)}
+                          className="w-full py-3 border-4 border-amber-900 bg-gray-300 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-gray-400"
+                          style={{ imageRendering: 'pixelated', transition: 'none' }}
+                        >
+                          Close
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Game Screen - Battle Area */}
                 <div className="p-4 bg-green-200 border-4 border-green-900 relative overflow-hidden" style={{ imageRendering: 'pixelated', minHeight: '300px' }}>
