@@ -2,7 +2,7 @@
 // The Architect's Echo — Will Quests for Sálarheim
 // 3 quests per sub-location × 2 sub-locations × 4 pillars = 24 quests
 
-import { calcXP } from './engine';
+import { calcXP, getAttrXPAmount } from './engine';
 
 export const WILL_QUESTS = [
   // ═══════════════════════════════════════════════════════════════
@@ -462,12 +462,15 @@ export const getQuestsBySubLocation = (pillar, subLocationKey) => {
   return WILL_QUESTS.filter((q) => q.pillar === pillar && q.subLocation === name);
 };
 
-// Helper: XP from difficulty (XPT = Base 1000 × Difficulty × FocusBonus)
+// Helper: XP, coins, attrXP (Standard +3-5%, Challenge +7-10% to pillar)
 export const getQuestRewards = (quest, focusBonus = 1) => {
   const diff = quest?.difficulty ?? 'standard';
   const xp = calcXP(diff, focusBonus);
   const coins = Math.max(10, Math.floor(xp / 2));
-  return { xp, coins };
+  const pillar = quest?.pillar ?? 'V';
+  const attrBoost = getAttrXPAmount(diff);
+  const attrXP = quest?.attrXP ?? { [pillar]: attrBoost };
+  return { xp, coins, attrXP };
 };
 
 // Helper: get quest by id

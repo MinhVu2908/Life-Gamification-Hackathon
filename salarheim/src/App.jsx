@@ -3,6 +3,7 @@ import { ChevronRight, ChevronLeft, Home, MapPin, Lock, Camera, Send, RotateCcw,
 import { motion, AnimatePresence } from 'framer-motion';
 import { getQuestsByPillar, getQuestRewards } from './willQuests';
 import { getTasksForBoard, getTaskRewards } from './easyTasks';
+import { getAttrLevel, ATTR_MAX } from './engine';
 
 // --- Research Data --- (4 questions per attribute, 16 total)
 const QUESTIONS = [
@@ -51,16 +52,27 @@ const ARCHETYPES = {
   'LLHH': { name: 'The Cerebral Anchor', desc: 'Strong mind and connection; lacks physical and practical base.' }
 };
 
-function getArchetypeFromScores(scores) {
-  const code = ['V', 'R', 'C', 'M'].map(attr => ((scores ?? {})[attr] ?? 0) < 10 ? 'L' : 'H').join('');
+function getArchetypeFromAttrXP(attrXP) {
+  const code = ['V', 'R', 'C', 'M'].map(attr => ((attrXP ?? {})[attr] ?? 0) < 50 ? 'L' : 'H').join('');
   return ARCHETYPES[code] || { name: 'The Wayward Alchemist', desc: 'Your path is unique and unwritten.' };
 }
 
+const ATTR_NAMES = { V: 'Vitality', R: 'Resilience', C: 'Connection', M: 'Mastery' };
+const getQuestionsByAttr = (attr) => QUESTIONS.filter((q) => q.attr === attr);
+
 export default function App() {
   // Load saved state if it exists
-  const [step, setStep] = useState(() => localStorage.getItem('sh_step') || 'onboarding');
+  const [step, setStep] = useState(() => {
+    const s = localStorage.getItem('sh_step') || 'onboarding';
+    const hasResults = !!localStorage.getItem('sh_results');
+    if (s === 'trial') return 'trial-attributes'; // migrate old step
+    // Always show welcome first if user hasn't completed trial
+    if (!hasResults && s !== 'onboarding') return 'onboarding';
+    return s;
+  });
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [trialAttr, setTrialAttr] = useState(null); // V|R|C|M when in trial-questions
   const [results, setResults] = useState(() => JSON.parse(localStorage.getItem('sh_results')) || null);
   const [mapView, setMapView] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
@@ -68,7 +80,9 @@ export default function App() {
   const [questFlowStep, setQuestFlowStep] = useState(null); // 'confirm' | 'availability' | 'in-progress' | 'complete'
   const [questStepIndex, setQuestStepIndex] = useState(0);
   const [completedTaskIds, setCompletedTaskIds] = useState(() => JSON.parse(localStorage.getItem('sh_completed_tasks')) || []);
-  const [taskBoardKey, setTaskBoardKey] = useState(0); // force re-fetch when completing a task
+  const [completedQuestIds, setCompletedQuestIds] = useState(() => JSON.parse(localStorage.getItem('sh_completed_quests')) || []);
+  const [taskBoardKey, setTaskBoardKey] = useState(0);
+  const [mapQuestKey, setMapQuestKey] = useState(0); // reshuffle positions when entering map
 
   // Board tasks (4 random, excluding completed)
   const boardTasks = useMemo(
@@ -76,18 +90,44 @@ export default function App() {
     [completedTaskIds, taskBoardKey]
   );
 
+  // Non-overlapping positions for quest circles (shuffled when entering map or completing quest)
+  const QUEST_SLOTS = [
+    { top: '8%', left: '12%' }, { top: '28%', left: '68%' }, { top: '58%', left: '15%' },
+    { top: '18%', left: '38%' }, { top: '62%', left: '58%' }, { top: '38%', left: '82%' },
+    { top: '15%', left: '45%' }, { top: '45%', left: '25%' }, { top: '72%', left: '35%' },
+    { top: '35%', left: '55%' }, { top: '55%', left: '75%' }, { top: '22%', left: '18%' },
+  ];
+  const shuffledSlots = useMemo(
+    () => [...QUEST_SLOTS].sort(() => Math.random() - 0.5),
+    [selectedLocation, mapQuestKey]
+  );
+
   // Persistence Hook
   useEffect(() => {
     localStorage.setItem('sh_step', step);
     if (results) localStorage.setItem('sh_results', JSON.stringify(results));
     localStorage.setItem('sh_completed_tasks', JSON.stringify(completedTaskIds));
-  }, [step, results, completedTaskIds]);
+    localStorage.setItem('sh_completed_quests', JSON.stringify(completedQuestIds));
+  }, [step, results, completedTaskIds, completedQuestIds]);
 
   const handleAnswer = (val) => {
-    const newAnswers = { ...answers, [QUESTIONS[currentQ].id]: val };
+    const qs = getQuestionsByAttr(trialAttr);
+    const q = qs[currentQ];
+    const newAnswers = { ...answers, [q.id]: val };
     setAnswers(newAnswers);
-    if (currentQ < QUESTIONS.length - 1) setCurrentQ(currentQ + 1);
-    else calculateResults(newAnswers);
+    if (currentQ < qs.length - 1) setCurrentQ(currentQ + 1);
+    else {
+      setStep('trial-attributes');
+      setTrialAttr(null);
+      setCurrentQ(0);
+    }
+  };
+
+  const handleTrialConfirm = () => {
+    calculateResults(answers);
+    setStep('results');
+    setTrialAttr(null);
+    setCurrentQ(0);
   };
 
   const calculateResults = (finalAnswers) => {
@@ -98,50 +138,67 @@ export default function App() {
       totalRaw += finalAnswers[q.id] ?? 0;
     });
 
-    const archetype = getArchetypeFromScores(scores);
-    const initialLevel = Math.max(1, Math.floor(totalRaw / 5)); // 16–80 totalRaw → level 1–16
+    // attrXP: 0–100 per attribute. Initial from trial (4–20) → *5 = 20–100
+    const attrXP = {
+      V: Math.min(ATTR_MAX, (scores.V ?? 0) * 5),
+      R: Math.min(ATTR_MAX, (scores.R ?? 0) * 5),
+      C: Math.min(ATTR_MAX, (scores.C ?? 0) * 5),
+      M: Math.min(ATTR_MAX, (scores.M ?? 0) * 5),
+    };
+    const archetype = getArchetypeFromAttrXP(attrXP);
+    const initialLevel = Math.max(1, Math.floor(totalRaw / 5));
     
     setResults({
       scores,
+      attrXP,
       archetype,
       level: initialLevel,
       xp: initialLevel * 1000,
       coins: results?.coins ?? 0,
-      primaryNeed: Object.keys(scores).reduce((a, b) => scores[a] < scores[b] ? a : b)
+      primaryNeed: Object.keys(attrXP).reduce((a, b) => attrXP[a] < attrXP[b] ? a : b)
     });
-    setStep('results');
   };
+
+  const hasAttrAnswers = (attr) => getQuestionsByAttr(attr).every((q) => answers[q.id] !== undefined);
+  const allAttrsAnswered = ['V', 'R', 'C', 'M'].every(hasAttrAnswers);
 
   const resetProfile = () => {
     setStep('onboarding');
     setCurrentQ(0);
     setAnswers({});
+    setTrialAttr(null);
     setResults(null);
     setSelectedQuest(null);
     setQuestFlowStep(null);
     setCompletedTaskIds([]);
+    setCompletedQuestIds([]);
     localStorage.removeItem('sh_step');
     localStorage.removeItem('sh_results');
     localStorage.removeItem('sh_completed_tasks');
+    localStorage.removeItem('sh_completed_quests');
   };
 
   const handleTaskComplete = (task) => {
     if (!results) return;
     const { xp, coins } = getTaskRewards(task);
-    const attrBonus = task.attr || {};
-    const newScores = {
-      V: (results.scores?.V ?? 0) + (attrBonus.V ?? 0),
-      R: (results.scores?.R ?? 0) + (attrBonus.R ?? 0),
-      C: (results.scores?.C ?? 0) + (attrBonus.C ?? 0),
-      M: (results.scores?.M ?? 0) + (attrBonus.M ?? 0),
-    };
-    setResults((prev) => ({
-      ...prev,
-      xp: (prev.xp ?? 0) + xp,
-      coins: (prev.coins ?? 0) + coins,
-      scores: newScores,
-      archetype: getArchetypeFromScores(newScores),
-    }));
+    const attrBonus = task.attrXP ?? {};
+    setResults((prev) => {
+      const base = (v, s) => (v ?? (s ?? 0) * 5);
+      const newAttrXP = {
+        V: Math.min(ATTR_MAX, base(prev.attrXP?.V, prev.scores?.V) + (attrBonus.V ?? 0)),
+        R: Math.min(ATTR_MAX, base(prev.attrXP?.R, prev.scores?.R) + (attrBonus.R ?? 0)),
+        C: Math.min(ATTR_MAX, base(prev.attrXP?.C, prev.scores?.C) + (attrBonus.C ?? 0)),
+        M: Math.min(ATTR_MAX, base(prev.attrXP?.M, prev.scores?.M) + (attrBonus.M ?? 0)),
+      };
+      return {
+        ...prev,
+        xp: (prev.xp ?? 0) + xp,
+        coins: (prev.coins ?? 0) + coins,
+        attrXP: newAttrXP,
+        archetype: getArchetypeFromAttrXP(newAttrXP),
+        primaryNeed: Object.keys(newAttrXP).reduce((a, b) => newAttrXP[a] < newAttrXP[b] ? a : b),
+      };
+    });
     setCompletedTaskIds((prev) => [...prev, task.id]);
     setTaskBoardKey((k) => k + 1);
   };
@@ -158,7 +215,9 @@ export default function App() {
   };
 
   const handleQuestRegenerate = () => {
-    const quests = getQuestsByPillar(selectedQuest.pillar).filter((q) => q.unlocked && q.id !== selectedQuest.id);
+    const quests = getQuestsByPillar(selectedQuest.pillar).filter(
+      (q) => q.unlocked && q.id !== selectedQuest.id && !completedQuestIds.includes(q.id)
+    );
     if (quests.length > 0) {
       const randomQuest = quests[Math.floor(Math.random() * quests.length)];
       setSelectedQuest(randomQuest);
@@ -180,30 +239,33 @@ export default function App() {
       setQuestStepIndex(questStepIndex + 1);
     } else {
       setQuestFlowStep('complete');
-      const { xp, coins } = getQuestRewards(selectedQuest);
-      const pillar = selectedQuest?.pillar ?? 'V';
+      const { xp, coins, attrXP: attrBonus } = getQuestRewards(selectedQuest);
       setResults((prev) => {
-        const newScores = {
-          V: (prev.scores?.V ?? 0) + (pillar === 'V' ? 1 : 0),
-          R: (prev.scores?.R ?? 0) + (pillar === 'R' ? 1 : 0),
-          C: (prev.scores?.C ?? 0) + (pillar === 'C' ? 1 : 0),
-          M: (prev.scores?.M ?? 0) + (pillar === 'M' ? 1 : 0),
+        const base = (v, s) => (v ?? (s ?? 0) * 5);
+        const newAttrXP = {
+          V: Math.min(ATTR_MAX, base(prev.attrXP?.V, prev.scores?.V) + (attrBonus?.V ?? 0)),
+          R: Math.min(ATTR_MAX, base(prev.attrXP?.R, prev.scores?.R) + (attrBonus?.R ?? 0)),
+          C: Math.min(ATTR_MAX, base(prev.attrXP?.C, prev.scores?.C) + (attrBonus?.C ?? 0)),
+          M: Math.min(ATTR_MAX, base(prev.attrXP?.M, prev.scores?.M) + (attrBonus?.M ?? 0)),
         };
         return {
           ...prev,
           xp: (prev.xp ?? 0) + xp,
           coins: (prev.coins ?? 0) + coins,
-          scores: newScores,
-          archetype: getArchetypeFromScores(newScores),
+          attrXP: newAttrXP,
+          archetype: getArchetypeFromAttrXP(newAttrXP),
+          primaryNeed: Object.keys(newAttrXP).reduce((a, b) => newAttrXP[a] < newAttrXP[b] ? a : b),
         };
       });
     }
   };
 
   const handleQuestComplete = () => {
+    if (selectedQuest?.id) setCompletedQuestIds((prev) => [...prev, selectedQuest.id]);
     setSelectedQuest(null);
     setQuestFlowStep(null);
     setQuestStepIndex(0);
+    setMapQuestKey((k) => k + 1); // reshuffle positions
   };
 
   const exitQuestFlow = () => {
@@ -216,26 +278,76 @@ export default function App() {
     <div className="min-h-screen bg-salar-dark text-slate-200 font-sans selection:bg-amber-500/30 overflow-x-hidden">
       <AnimatePresence mode="wait">
         
+        {/* 1. Welcome / Story */}
         {step === 'onboarding' && (
           <motion.div key="on" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="h-screen flex flex-col items-center justify-center p-6 text-center space-y-8">
-            <h1 className="font-serif text-6xl text-amber-500 tracking-[0.2em] uppercase">Sálarheim</h1>
-            <p className="font-serif italic text-xl text-slate-500">"The Edict of the Fallen King"</p>
-            <button onClick={() => setStep('trial')} className="px-12 py-4 border border-amber-600/50 text-amber-500 font-serif tracking-widest hover:bg-amber-600/10 transition-all">
+            className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+            <p className="font-serif text-sm text-amber-500/80 uppercase tracking-[0.3em] mb-4">Welcome</p>
+            <h1 className="font-serif text-6xl text-amber-500 tracking-[0.2em] uppercase mb-6">Sálarheim</h1>
+            <p className="font-serif italic text-xl text-slate-500 mb-4">"The Edict of the Fallen King"</p>
+            <div className="max-w-xl text-slate-400 text-left space-y-4 mb-12">
+              <p className="font-serif italic">In the ruins of a fallen kingdom, four pillars once held the realm: Vitality, Resilience, Connection, and Mastery. Shadow Blight consumed them—but the Edict remains.</p>
+              <p className="font-serif italic">Your trial begins now. Touch each pillar to reveal your current state. The ancients will speak; you will answer.</p>
+            </div>
+            <button onClick={() => setStep('trial-attributes')} className="px-12 py-4 border border-amber-600/50 text-amber-500 font-serif tracking-widest hover:bg-amber-600/10 transition-all">
               BEGIN THE TRIAL
             </button>
           </motion.div>
         )}
 
-        {step === 'trial' && (
-          <motion.div key="tr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="h-screen flex flex-col items-center justify-center p-6">
+        {/* 2. Four attribute circles */}
+        {step === 'trial-attributes' && (
+          <motion.div key="attr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="min-h-screen flex flex-col items-center justify-center p-6 relative">
+            <button onClick={() => setStep('onboarding')} className="absolute top-6 left-6 text-slate-500 hover:text-amber-500 flex items-center gap-2 text-sm z-10">
+              <ChevronLeft size={18} /> Back to story
+            </button>
+            <p className="font-serif text-sm text-slate-500 uppercase tracking-widest mb-8">Choose a pillar to assess</p>
+            <div className="grid grid-cols-2 gap-8 max-w-md mb-12">
+              {['V', 'R', 'C', 'M'].map((attr) => {
+                const done = hasAttrAnswers(attr);
+                return (
+                  <button
+                    key={attr}
+                    onClick={() => {
+                      setTrialAttr(attr);
+                      setCurrentQ(0);
+                      setStep('trial-questions');
+                    }}
+                    className={`w-24 h-24 rounded-full flex flex-col items-center justify-center border-2 transition-all font-serif
+                      ${done ? 'border-amber-500/60 bg-amber-500/20 text-amber-500' : 'border-white/20 bg-white/5 text-slate-400 hover:border-amber-500/40 hover:bg-amber-500/10'}
+                    `}
+                    title={ATTR_NAMES[attr]}
+                  >
+                    <span className="text-2xl font-bold">{attr}</span>
+                    <span className="text-[10px] uppercase mt-0.5">{ATTR_NAMES[attr]}</span>
+                    {done && <Check size={14} className="mt-1 text-amber-500" />}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={() => setStep('trial-confirm')}
+              disabled={!allAttrsAnswered}
+              className={`px-8 py-3 border font-serif tracking-widest transition-all ${allAttrsAnswered ? 'border-amber-500/50 text-amber-500 hover:bg-amber-500/10' : 'border-white/10 text-slate-600 cursor-not-allowed'}`}
+            >
+              Confirm & Continue
+            </button>
+          </motion.div>
+        )}
+
+        {/* 3. Four questions for selected attribute */}
+        {step === 'trial-questions' && trialAttr && (
+          <motion.div key="qs" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="min-h-screen flex flex-col items-center justify-center p-6 relative">
+            <button onClick={() => { setStep('trial-attributes'); setTrialAttr(null); setCurrentQ(0); }} className="absolute top-6 left-6 text-slate-500 hover:text-amber-500 flex items-center gap-2 text-sm z-10">
+              <ChevronLeft size={18} /> Back
+            </button>
             <div className="w-full max-w-2xl space-y-12">
               <div className="flex justify-between font-serif text-xs text-amber-500/50 uppercase tracking-widest">
-                <span>Entry {currentQ + 1}/16</span>
-                <span>{QUESTIONS[currentQ].attr}</span>
+                <span>{ATTR_NAMES[trialAttr]} — Question {currentQ + 1}/4</span>
               </div>
-              <h2 className="font-serif text-3xl text-slate-200 leading-snug italic">"{QUESTIONS[currentQ].text}"</h2>
+              <h2 className="font-serif text-3xl text-slate-200 leading-snug italic">"{getQuestionsByAttr(trialAttr)[currentQ].text}"</h2>
               <div className="grid grid-cols-5 gap-4">
                 {[1, 2, 3, 4, 5].map((val) => (
                   <button key={val} onClick={() => handleAnswer(val)}
@@ -248,6 +360,23 @@ export default function App() {
           </motion.div>
         )}
 
+        {/* 4. Confirm step */}
+        {step === 'trial-confirm' && (
+          <motion.div key="cf" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+            <h2 className="font-serif text-2xl text-slate-200 mb-4">Is this what you want?</h2>
+            <p className="text-slate-500 mb-8 max-w-md">You have assessed all four pillars. Your archetype awaits.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setStep('trial-attributes')} className="px-6 py-3 border border-slate-600 text-slate-400 hover:border-slate-500 rounded-lg">
+                Go back
+              </button>
+              <button onClick={handleTrialConfirm} className="px-8 py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium">
+                Yes, reveal my archetype
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {step === 'results' && results && (
           <motion.div key="res" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="min-h-screen flex flex-col items-center justify-center p-6 space-y-12">
@@ -256,12 +385,17 @@ export default function App() {
               <p className="text-slate-500 italic font-light">{results.archetype.desc}</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-2xl">
-              {Object.entries(results.scores).map(([attr, score]) => (
-                <div key={attr} className={`p-4 bg-white/5 border border-white/10 rounded-xl text-center ${results.primaryNeed === attr ? 'border-amber-500/50 bg-amber-500/5' : ''}`}>
-                  <div className="text-[10px] uppercase text-slate-500 mb-1">{attr}</div>
-                  <div className="text-2xl font-serif">{score}</div>
-                </div>
-              ))}
+              {['V','R','C','M'].map((attr) => {
+                const xp = results.attrXP?.[attr] ?? (results.scores?.[attr] ?? 0) * 5;
+                const level = getAttrLevel(xp);
+                return (
+                  <div key={attr} className={`p-4 bg-white/5 border border-white/10 rounded-xl text-center ${results.primaryNeed === attr ? 'border-amber-500/50 bg-amber-500/5' : ''}`}>
+                    <div className="text-[10px] uppercase text-slate-500 mb-1">{attr}</div>
+                    <div className="text-2xl font-serif">Lv{level}</div>
+                    <div className="text-xs text-slate-500">{xp}/100</div>
+                  </div>
+                );
+              })}
             </div>
             <button onClick={() => setStep('dashboard')} className="flex items-center gap-2 text-amber-500 uppercase tracking-widest text-xs font-bold hover:gap-4 transition-all">
               Claim the Crown <ChevronRight size={16} />
@@ -295,17 +429,11 @@ export default function App() {
                         {selectedLocation === 'V' ? 'Vitality' : selectedLocation === 'R' ? 'Resilience' : selectedLocation === 'C' ? 'Connection' : 'Mastery'} — Will Quests
                       </div>
                       <div className="relative w-full aspect-[4/3] max-w-2xl min-h-[280px] bg-salar-card rounded-2xl border border-white/5">
-                        {getQuestsByPillar(selectedLocation).map((quest, i) => {
+                        {getQuestsByPillar(selectedLocation)
+                          .filter((q) => !completedQuestIds.includes(q.id))
+                          .map((quest, i) => {
                           const isLocked = quest.unlocked !== true;
-                          const positions = [
-                            { top: '8%', left: '12%' },
-                            { top: '28%', left: '68%' },
-                            { top: '58%', left: '15%' },
-                            { top: '18%', left: '38%' },
-                            { top: '62%', left: '58%' },
-                            { top: '38%', left: '82%' },
-                          ];
-                          const pos = positions[i % positions.length];
+                          const pos = shuffledSlots[i % shuffledSlots.length];
                           return (
                             <div
                               key={quest.id}
@@ -401,20 +529,29 @@ export default function App() {
                               </>
                             )}
 
-                            {questFlowStep === 'complete' && (
-                              <>
+                            {questFlowStep === 'complete' && (() => {
+                                const rewards = getQuestRewards(selectedQuest);
+                                return (
+                                <>
                                 <div className="text-center">
                                   <h3 className="font-serif text-2xl text-amber-500 mb-2">Quest Complete</h3>
                                   <p className="text-slate-400 italic mb-4">{selectedQuest.signOfCompletion}</p>
-                                  <div className="flex gap-6 justify-center">
+                                  <div className="flex flex-wrap gap-4 justify-center mb-4">
                                     <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
                                       <Zap size={20} className="text-amber-500" />
-                                      <span className="text-amber-500 font-bold">+{getQuestRewards(selectedQuest).xp} XP</span>
+                                      <span className="text-amber-500 font-bold">+{rewards.xp} XP</span>
                                     </div>
                                     <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
                                       <Coins size={20} className="text-amber-500" />
-                                      <span className="text-amber-500 font-bold">+{getQuestRewards(selectedQuest).coins} Coins</span>
+                                      <span className="text-amber-500 font-bold">+{rewards.coins} Coins</span>
                                     </div>
+                                    {rewards.attrXP && Object.keys(rewards.attrXP).length > 0 && (
+                                      <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
+                                        <span className="text-amber-500 font-bold">
+                                          {Object.entries(rewards.attrXP).map(([a,v]) => `+${v}% ${a}`).join(' ')}
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                                 <button
@@ -424,7 +561,8 @@ export default function App() {
                                   Return to Map
                                 </button>
                               </>
-                            )}
+                            );
+                            })()}
                           </div>
                         </motion.div>
                       )}
@@ -479,7 +617,12 @@ export default function App() {
                       <div className="text-xs text-slate-500 mt-0.5">Level {results.level}</div>
                       <div className="text-xs text-slate-400 mt-0.5">Exp: {results.xp}</div>
                       <div className="text-xs text-slate-400">Coins: {results.coins ?? 0}</div>
-                      <div className="text-xs text-slate-400">V:{results.scores.V} R:{results.scores.R} C:{results.scores.C} M:{results.scores.M}</div>
+                      <div className="text-xs text-slate-400">
+                      {['V','R','C','M'].map((a) => {
+                        const xp = results.attrXP?.[a] ?? (results.scores?.[a] ?? 0) * 5;
+                        return `${a}:Lv${getAttrLevel(xp)}(${xp})`;
+                      }).join(' ')}
+                    </div>
                     </div>
                   </div>
 
@@ -534,7 +677,7 @@ export default function App() {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-slate-200">{task.text}</p>
                             <p className="text-xs text-slate-500 mt-0.5">
-                              +{xp} XP · +{coins} coins {Object.keys(task.attr || {}).length ? `· +1 ${Object.keys(task.attr).join(',')}` : ''}
+                              +{xp} XP · +{coins} coins {Object.keys(task.attrXP || {}).length ? `· +${Object.entries(task.attrXP).map(([a,v]) => `${v}${a}`).join(' ')}` : ''}
                             </p>
                           </div>
                         </div>
