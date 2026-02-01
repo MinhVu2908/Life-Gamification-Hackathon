@@ -5,6 +5,14 @@ import { getQuestsByPillar, getQuestRewards } from './willQuests';
 import { getTasksForBoard, getTaskRewards, EASY_TASKS } from './easyTasks';
 import { getAttrLevel, getAttrXPInLevel, getTotalLevel, getTotalXPInLevel, trialScoreToAttrXP, getTaskAttrXPReward } from './engine';
 
+import imgBackground from './assets/images/Background.png';
+import imgDashboardMap from './assets/images/Dashboard general map.png';
+import imgVitalityMap from './assets/images/Vitality Woods map.png';
+import imgResilienceMap from './assets/images/Resilience Peak map.png';
+import imgConnectionMap from './assets/images/Connection Map.png';
+import imgMasteryMap from './assets/images/Mastery Map.png';
+import imgMaps from './assets/images/Maps.png';
+
 // --- Research Data --- (4 questions per attribute, 16 total)
 const QUESTIONS = [
   // V - Vitality (Physical Energy & Health)
@@ -205,10 +213,40 @@ export default function App() {
     { top: '15%', left: '45%' }, { top: '45%', left: '25%' }, { top: '72%', left: '35%' },
     { top: '35%', left: '55%' }, { top: '55%', left: '75%' }, { top: '22%', left: '18%' },
   ];
+  // Mastery (M) map: 4 oases — top-left, top-right, bottom-left, bottom-right (2 unlocked, 2 locked quests)
+  const MASTERY_OASIS_SLOTS = [
+    { top: '28%', left: '22%' },  // top-left oasis (below pyramids)
+    { top: '28%', left: '78%' },  // top-right oasis (with water)
+    { top: '72%', left: '22%' },  // bottom-left oasis (with water)
+    { top: '55%', left: '78%' },  // bottom-right oasis (sandy center)
+  ];
+  // Vitality (V) map: 4 villages — top-left, bottom-left, top-right hamlet, bottom-right (2 unlocked, 2 locked)
+  const VITALITY_VILLAGE_SLOTS = [
+    { top: '22%', left: '22%' },  // top-left village (largest)
+    { top: '55%', left: '22%' },  // bottom-left village (below first bridge)
+    { top: '25%', left: '78%' },  // top-right small hamlet
+    { top: '72%', left: '78%' },  // bottom-right village (near second bridge)
+  ];
+  // Resilience (R) map: 2 castles — one per castle (1 unlocked, 1 locked)
+  const RESILIENCE_CASTLE_SLOTS = [
+    { top: '28%', left: '25%' },  // first castle (e.g. left / peaks)
+    { top: '68%', left: '75%' },  // second castle (e.g. right / peaks)
+  ];
+  // Connection (C) map: 2 locations — top-left island, market bottom-right
+  const CONNECTION_SLOTS = [
+    { top: '18%', left: '18%' },  // top-left island (cluster of small islands in water)
+    { top: '62%', left: '78%' },  // market bottom-right (market stalls in village)
+  ];
   const shuffledSlots = useMemo(
     () => [...QUEST_SLOTS].sort(() => Math.random() - 0.5),
     [selectedLocation, mapQuestKey]
   );
+  const slotsForLocation =
+    selectedLocation === 'M' ? MASTERY_OASIS_SLOTS
+    : selectedLocation === 'C' ? CONNECTION_SLOTS
+    : selectedLocation === 'V' ? VITALITY_VILLAGE_SLOTS
+    : selectedLocation === 'R' ? RESILIENCE_CASTLE_SLOTS
+    : shuffledSlots;
 
   // Persistence Hook
   useEffect(() => {
@@ -639,12 +677,13 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
   };
 
   const IMG = {
-    background: '/images/Background.png',
-    dashboardMap: encodeURI('/images/Dashboard general map.png'),
-    vitalityMap: encodeURI('/images/Vitality Woods map.png'),
-    resilienceMap: encodeURI('/images/Resilience Peak map.png'),
-    connectionMap: encodeURI('/images/Connection Map.png'),
-    masteryMap: encodeURI('/images/Mastery Map.png'),
+    background: imgBackground,
+    dashboardMap: imgDashboardMap,
+    vitalityMap: imgVitalityMap,
+    resilienceMap: imgResilienceMap,
+    connectionMap: imgConnectionMap,
+    masteryMap: imgMasteryMap,
+    maps: imgMaps,
   };
 
   return (
@@ -1114,70 +1153,94 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                     <>
                       <button
                         onClick={() => setSelectedLocation(null)}
-                        className="flex items-center gap-2 text-slate-500 hover:text-amber-500 text-sm mb-4"
+                        className="flex items-center gap-2 font-mono text-xs font-bold text-amber-800 hover:text-amber-900 mb-4"
+                        style={{ imageRendering: 'pixelated' }}
                       >
-                        <ChevronLeft size={18} /> Back
+                        <ChevronLeft size={16} /> Back
                       </button>
-                      <div className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">
+                      <div className="font-mono text-xs font-bold uppercase tracking-widest text-amber-800 mb-4">
                         {selectedLocation === 'V' ? 'Vitality' : selectedLocation === 'R' ? 'Resilience' : selectedLocation === 'C' ? 'Connection' : 'Mastery'} — Will Quests
                       </div>
-                      <div className="relative w-full aspect-[4/3] max-w-2xl min-h-[280px] rounded-2xl border border-white/5 overflow-hidden bg-salar-card">
+                      <div className="relative w-full aspect-[4/3] max-w-2xl min-h-[280px] border-4 border-amber-900 overflow-hidden bg-salar-card" style={{ imageRendering: 'pixelated', boxShadow: '6px 6px 0px 0px #8B4513' }}>
                         <img
                           src={selectedLocation === 'V' ? IMG.vitalityMap : selectedLocation === 'R' ? IMG.resilienceMap : selectedLocation === 'C' ? IMG.connectionMap : IMG.masteryMap}
                           alt=""
                           className="absolute inset-0 w-full h-full object-cover"
                           style={{ imageRendering: 'pixelated' }}
                         />
-                        {getQuestsByPillar(selectedLocation)
+                        {(selectedLocation === 'M'
+                            ? getQuestsByPillar(selectedLocation).slice(0, 4)
+                            : selectedLocation === 'C'
+                            ? getQuestsByPillar(selectedLocation).slice(0, 2)
+                            : selectedLocation === 'V'
+                            ? getQuestsByPillar(selectedLocation).slice(0, 4)
+                            : selectedLocation === 'R'
+                            ? getQuestsByPillar(selectedLocation).slice(0, 2)
+                            : getQuestsByPillar(selectedLocation)
+                          )
                           .filter((q) => !completedQuestIds.includes(q.id))
                           .map((quest, i) => {
                           const isLocked = quest.unlocked !== true;
-                          const pos = shuffledSlots[i % shuffledSlots.length];
+                          const pos = slotsForLocation[i % slotsForLocation.length];
                           return (
                             <div
                               key={quest.id}
-                              className="absolute w-12 h-12 rounded-full flex items-center justify-center transition-all z-10"
-                              style={{ top: pos.top, left: pos.left, transform: 'translate(-50%, -50%)' }}
+                              className="absolute w-14 h-14 flex items-center justify-center z-10"
+                              style={{
+                                top: pos.top,
+                                left: pos.left,
+                                transform: 'translate(-50%, -50%)',
+                                imageRendering: 'pixelated',
+                              }}
                               title={isLocked ? `${quest.title || 'Quest'} (Locked)` : quest.title}
                               aria-label={quest.title}
                             >
                               {isLocked ? (
-                                <div className="w-full h-full rounded-full bg-slate-800/80 border-2 border-slate-600 flex items-center justify-center opacity-60">
-                                  <Lock size={18} className="text-slate-500" />
+                                <div
+                                  className="w-full h-full border-4 border-amber-900 bg-slate-700 flex items-center justify-center"
+                                  style={{ imageRendering: 'pixelated', boxShadow: '4px 4px 0px 0px #451a03' }}
+                                >
+                                  <Lock size={20} className="text-amber-200" strokeWidth={2.5} />
                                 </div>
                               ) : (
                                 <button
                                   onClick={() => handleQuestClick(quest)}
-                                  className="w-full h-full rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center hover:scale-110 hover:bg-amber-500/30 hover:border-amber-500/60 transition-transform cursor-pointer"
+                                  className="w-full h-full border-4 border-amber-900 bg-orange-400 flex items-center justify-center hover:bg-orange-500 font-mono text-amber-900 font-bold text-[10px] uppercase"
+                                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
                                   aria-label={quest.title}
-                                />
+                                >
+                                  ?
+                                </button>
                               )}
                             </div>
                           );
                         })}
                       </div>
 
-                      {/* Quest flow overlay */}
+                      {/* Quest flow overlay — pixel-art style */}
                       {selectedQuest && questFlowStep && (
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
-                          className="fixed inset-0 z-50 bg-salar-dark/95 flex flex-col items-center justify-center p-6"
+                          className="fixed inset-0 z-50 bg-amber-950/90 flex flex-col items-center justify-center p-6"
+                          style={{ imageRendering: 'pixelated' }}
                         >
-                          <div className="w-full max-w-lg space-y-6">
+                          <div className="w-full max-w-lg bg-amber-50 border-4 border-amber-900 p-6 space-y-4" style={{ imageRendering: 'pixelated', boxShadow: '8px 8px 0px 0px #8B4513' }}>
                             {questFlowStep === 'confirm' && (
                               <>
-                                <h3 className="font-serif text-2xl text-amber-500 text-center">{selectedQuest.title}</h3>
-                                <p className="text-slate-400 text-center text-sm">
+                                <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-2" style={{ imageRendering: 'pixelated' }}>
+                                  <h3 className="font-mono text-lg font-bold text-amber-100 text-center uppercase">{selectedQuest.title}</h3>
+                                </div>
+                                <p className="font-mono text-xs text-amber-900 text-center">
                                   {selectedQuest.subLocation} — {selectedQuest.majorLocation}
                                 </p>
-                                <p className="text-slate-300 text-center">Do you want to proceed with this quest?</p>
-                                <div className="flex gap-4 justify-center">
-                                  <button onClick={exitQuestFlow} className="px-6 py-3 border border-slate-600 text-slate-400 hover:border-slate-500 rounded-lg">
+                                <p className="font-mono text-xs text-amber-900 text-center">Do you want to proceed with this quest?</p>
+                                <div className="flex gap-3 justify-center pt-2">
+                                  <button onClick={exitQuestFlow} className="px-4 py-2 border-4 border-amber-900 bg-gray-300 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-gray-400" style={{ imageRendering: 'pixelated', transition: 'none' }}>
                                     Cancel
                                   </button>
-                                  <button onClick={handleQuestProceed} className="px-6 py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg">
+                                  <button onClick={handleQuestProceed} className="px-4 py-2 border-4 border-amber-900 bg-orange-400 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-orange-500" style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}>
                                     Proceed
                                   </button>
                                 </div>
@@ -1186,16 +1249,18 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
 
                             {questFlowStep === 'availability' && (
                               <>
-                                <h3 className="font-serif text-2xl text-amber-500 text-center">{selectedQuest.title}</h3>
-                                <p className="text-slate-300 text-center">Are you available to do this quest now?</p>
-                                <div className="flex flex-col gap-3">
-                                  <button onClick={handleQuestAvailable} className="w-full py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium">
+                                <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-2" style={{ imageRendering: 'pixelated' }}>
+                                  <h3 className="font-mono text-lg font-bold text-amber-100 text-center uppercase">{selectedQuest.title}</h3>
+                                </div>
+                                <p className="font-mono text-xs text-amber-900 text-center">Are you available to do this quest now?</p>
+                                <div className="flex flex-col gap-2 pt-2">
+                                  <button onClick={handleQuestAvailable} className="w-full py-3 border-4 border-amber-900 bg-orange-400 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-orange-500" style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}>
                                     Yes, I'm ready
                                   </button>
-                                  <button onClick={handleQuestRegenerate} className="w-full py-3 border border-slate-600 text-slate-400 hover:border-slate-500 rounded-lg flex items-center justify-center gap-2">
-                                    <RefreshCw size={18} /> Regenerate quest
+                                  <button onClick={handleQuestRegenerate} className="w-full py-3 border-4 border-amber-900 bg-amber-100 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-amber-200 flex items-center justify-center gap-2" style={{ imageRendering: 'pixelated', transition: 'none' }}>
+                                    <RefreshCw size={16} /> Regenerate quest
                                   </button>
-                                  <button onClick={exitQuestFlow} className="text-slate-500 text-sm hover:text-slate-400">
+                                  <button onClick={exitQuestFlow} className="font-mono text-xs text-amber-700 hover:text-amber-900">
                                     Cancel
                                   </button>
                                 </div>
@@ -1205,25 +1270,28 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                             {questFlowStep === 'in-progress' && (
                               <>
                                 <div className="flex justify-between items-center">
-                                  <button onClick={exitQuestFlow} className="text-slate-500 text-sm hover:text-slate-400 flex items-center gap-1">
-                                    <ChevronLeft size={16} /> Exit
+                                  <button onClick={exitQuestFlow} className="font-mono text-xs text-amber-700 hover:text-amber-900 flex items-center gap-1">
+                                    <ChevronLeft size={14} /> Exit
                                   </button>
-                                  <span className="text-xs text-slate-500">
+                                  <span className="font-mono text-xs text-amber-900 font-bold">
                                     Step {questStepIndex + 1} of {selectedQuest.steps?.length ?? 0}
                                   </span>
                                 </div>
-                                <h3 className="font-serif text-xl text-amber-500">{selectedQuest.title}</h3>
-                                <p className="text-slate-400 italic text-sm">{selectedQuest.narrativeIntro}</p>
-                                <div className="p-4 bg-salar-card rounded-xl border border-white/5">
-                                  <p className="text-slate-200 leading-relaxed">
+                                <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-2" style={{ imageRendering: 'pixelated' }}>
+                                  <h3 className="font-mono text-sm font-bold text-amber-100 text-center uppercase">{selectedQuest.title}</h3>
+                                </div>
+                                <p className="font-mono text-xs text-amber-900 italic">{selectedQuest.narrativeIntro}</p>
+                                <div className="p-4 bg-yellow-100 border-4 border-amber-900" style={{ imageRendering: 'pixelated' }}>
+                                  <p className="font-mono text-xs text-amber-900 leading-relaxed">
                                     {selectedQuest.steps?.[questStepIndex]}
                                   </p>
                                 </div>
                                 <button
                                   onClick={handleQuestStepNext}
-                                  className="w-full py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium flex items-center justify-center gap-2"
+                                  className="w-full py-3 border-4 border-amber-900 bg-orange-400 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-orange-500 flex items-center justify-center gap-2"
+                                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
                                 >
-                                  {questStepIndex < (selectedQuest.steps?.length ?? 1) - 1 ? 'Next step' : 'Complete'} <ChevronRight size={18} />
+                                  {questStepIndex < (selectedQuest.steps?.length ?? 1) - 1 ? 'Next step' : 'Complete'} <ChevronRight size={16} />
                                 </button>
                               </>
                             )}
@@ -1233,29 +1301,28 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                                 return (
                                 <>
                                 <div className="text-center">
-                                  <h3 className="font-serif text-2xl text-amber-500 mb-2">Quest Complete</h3>
-                                  <p className="text-slate-400 italic mb-4">{selectedQuest.signOfCompletion}</p>
-                                  <div className="flex flex-wrap gap-4 justify-center mb-4">
-                                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
-                                      <Zap size={20} className="text-amber-500" />
-                                      <span className="text-amber-500 font-bold">+{rewards.xp} XP</span>
+                                  <div className="bg-amber-900 border-2 border-amber-950 p-2 mb-3" style={{ imageRendering: 'pixelated' }}>
+                                    <h3 className="font-mono text-lg font-bold text-amber-100 uppercase">Quest Complete</h3>
+                                  </div>
+                                  <p className="font-mono text-xs text-amber-900 italic mb-3">{selectedQuest.signOfCompletion}</p>
+                                  <div className="flex flex-wrap gap-2 justify-center mb-4">
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-100 border-2 border-amber-900 font-mono text-xs font-bold text-amber-900" style={{ imageRendering: 'pixelated' }}>
+                                      <Zap size={16} className="text-amber-700" /> +{rewards.xp} XP
                                     </div>
-                                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
-                                      <Coins size={20} className="text-amber-500" />
-                                      <span className="text-amber-500 font-bold">+{rewards.coins} Coins</span>
+                                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-100 border-2 border-amber-900 font-mono text-xs font-bold text-amber-900" style={{ imageRendering: 'pixelated' }}>
+                                      <Coins size={16} className="text-amber-700" /> +{rewards.coins} Coins
                                     </div>
                                     {rewards.attrXP && Object.keys(rewards.attrXP).length > 0 && (
-                                      <div className="flex items-center gap-2 px-4 py-2 bg-amber-500/10 rounded-lg">
-                                        <span className="text-amber-500 font-bold">
-                                          {Object.entries(rewards.attrXP).map(([a,v]) => `+${v}% ${a}`).join(' ')}
-                                        </span>
+                                      <div className="flex items-center gap-2 px-3 py-2 bg-yellow-100 border-2 border-amber-900 font-mono text-xs font-bold text-amber-900" style={{ imageRendering: 'pixelated' }}>
+                                        {Object.entries(rewards.attrXP).map(([a,v]) => `+${v} ${a}`).join(' ')}
                                       </div>
                                     )}
                                   </div>
                                 </div>
                                 <button
                                   onClick={handleQuestComplete}
-                                  className="w-full py-3 bg-amber-500/20 border border-amber-500/50 text-amber-500 hover:bg-amber-500/30 rounded-lg font-medium"
+                                  className="w-full py-3 border-4 border-amber-900 bg-orange-400 text-amber-900 font-mono text-xs font-bold uppercase hover:bg-orange-500"
+                                  style={{ imageRendering: 'pixelated', transition: 'none', boxShadow: '4px 4px 0px 0px #8B4513' }}
                                 >
                                   Return to Map
                                 </button>
@@ -1270,7 +1337,7 @@ Return ONLY a JSON array of exactly 3 task objects. Each object: "title", "descr
                     <div className="relative w-full max-w-4xl mx-auto border-4 border-amber-900 overflow-hidden" style={{ imageRendering: 'pixelated' }}>
                       {/* Map Image */}
                       <img 
-                        src="/images/Maps.png" 
+                        src={IMG.maps} 
                         alt="Sálarheim Map" 
                         className="w-full h-auto"
                         style={{ imageRendering: 'pixelated' }}
